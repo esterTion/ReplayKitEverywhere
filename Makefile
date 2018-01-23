@@ -1,5 +1,7 @@
 include $(THEOS)/makefiles/common.mk
 
+ARCHS = arm64
+TARGET = iphone:clang:9.0:9.0
 TWEAK_NAME = ReplayKitEverywhere
 ReplayKitEverywhere_FILES = ReplayKitEverywhere.mm
 
