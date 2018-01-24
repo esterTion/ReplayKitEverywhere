@@ -24,19 +24,11 @@
     
     RPScreenRecorder* recorder = RPScreenRecorder.sharedRecorder;
     
-    if ([recorder respondsToSelector:@selector(startRecordingWithHandler:)]){
-        [recorder startRecordingWithHandler:^(NSError * error) {
-            if(error != nil) {
-                return;
-            }
-        }];
-    } else {
-        [recorder startRecordingWithMicrophoneEnabled:false handler:^(NSError * error) {
-            if(error != nil) {
-                return;
-            }
-        }];
-    }
+    [recorder startRecordingWithMicrophoneEnabled:true handler:^(NSError * error) {
+        if(error != nil) {
+            return;
+        }
+    }];
     
 }
 
