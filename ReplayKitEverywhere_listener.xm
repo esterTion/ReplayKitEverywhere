@@ -7,29 +7,24 @@
 //
 
 #import <libactivator/libactivator.h>
-#import <libobjcipc/objcipc.h>
 #import <SpringBoard/SpringBoard.h>
 #import <SpringBoard/SBAlertItemsController.h>
 #import <SpringBoard/SBApplication.h>
 #import <SpringBoard/SBApplicationController.h>
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
+#import <notify.h>
 #import "ReplayKitEverywhere.h"
 
 @interface RKEverywhereListener : NSObject <LAListener>
 @end
 
-static SpringBoard *springBoard = nil;
-
 @implementation RKEverywhereListener
 
 - (void)activator:(LAActivator *)activator receiveEvent:(LAEvent *)event {
-
 	SpringBoard *springBoard = (SpringBoard*) [objc_getClass("SpringBoard") sharedApplication];
 	SBApplication *front = (SBApplication*) [springBoard _accessibilityFrontMostApplication];
-	[OBJCIPC sendMessageToAppWithIdentifier:front.bundleIdentifier messageName:@"startOrStopRecord" dictionary:nil replyHandler:^(NSDictionary *response) {
-                event.handled = YES;
-	}];
+	notify_post([[front.bundleIdentifier stringByAppendingString:@".replaykit_receiver"] cStringUsingEncoding:NSUTF8StringEncoding]);
 }
 
 
@@ -56,15 +51,27 @@ static NSArray *blackList = @[ @"MailAppController", @"FBWildeApplication" ];
 	NSString *classString = NSStringFromClass([self class]);
 	if ([@"SpringBoard" isEqualToString:classString]) {
 		%log(@"Registering SpringBoard for activator events");
-		springBoard = (SpringBoard*) self;
 		[LASharedActivator registerListener:[RKEverywhereListener new] forName:@"com.estertion.replaykiteverywhere"];
 	} else if (![blackList containsObject:classString]) {
-		[OBJCIPC registerIncomingMessageFromSpringBoardHandlerForMessageName:@"startOrStopRecord" handler:^NSDictionary *(NSDictionary *message) {
-			   dispatch_async(dispatch_get_main_queue(), ^{
-           		[ReplayKitEverywhere startOrStopRec];	
-        	});
-            return nil;
-        }];
+		NSProcessInfo *processInfo = [NSClassFromString(@"NSProcessInfo") processInfo];
+		NSArray *args = processInfo.arguments;
+		NSUInteger count = args.count;
+		if (count != 0) {
+			NSString *executablePath = args[0];
+			if (executablePath) {
+				BOOL isExtensionOrApp = [executablePath rangeOfString:@"/Application"].location != NSNotFound;
+				if (isExtensionOrApp) {
+					NSString *bundleId = [[NSBundle mainBundle] bundleIdentifier];
+					int notify_token;
+					notify_register_dispatch([[bundleId stringByAppendingString:@".replaykit_receiver"] cStringUsingEncoding:NSUTF8StringEncoding],
+						&notify_token,
+						dispatch_get_main_queue(),^(int token) {
+							[ReplayKitEverywhere startOrStopRec];	
+						}
+					);
+				}
+			}
+		}
 	}
 
  %orig;

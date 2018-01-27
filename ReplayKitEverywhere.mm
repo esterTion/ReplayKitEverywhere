@@ -18,17 +18,29 @@
 @interface ReplayKitEverywhere : UIViewController
 @end
 
+static RPPreviewViewController *previewControllerShare = NULL;
+
 @implementation ReplayKitEverywhere
 
 +(void)startRec{
     
     RPScreenRecorder* recorder = RPScreenRecorder.sharedRecorder;
     
-    [recorder startRecordingWithMicrophoneEnabled:true handler:^(NSError * error) {
-        if(error != nil) {
-            return;
-        }
-    }];
+    if ([recorder respondsToSelector:@selector(startRecordingWithHandler:)]){
+        //iOS 10+
+        [recorder startRecordingWithHandler:^(NSError * error) {
+            if(error != nil) {
+                return;
+            }
+        }];
+    } else {
+        //iOS 9
+        [recorder startRecordingWithMicrophoneEnabled:true handler:^(NSError * error) {
+            if(error != nil) {
+                return;
+            }
+        }];
+    }
     
 }
 
@@ -39,6 +51,7 @@
         }else if(previewViewController != nil){
             
             previewViewController.previewControllerDelegate = self;
+            previewControllerShare = previewViewController;
             
             UIViewController *rootController = [UIApplication sharedApplication].keyWindow.rootViewController;
             [rootController presentViewController:previewViewController animated:YES completion:nil];
@@ -71,7 +84,10 @@
 
 +(void)previewControllerDidFinish:(RPPreviewViewController *)previewController {
     NSLog(@"previewControllerDidFinish");
-    [[UIApplication sharedApplication].keyWindow.rootViewController dismissViewControllerAnimated:YES completion:nil];
+    if (previewControllerShare != NULL) {
+        [previewControllerShare dismissViewControllerAnimated:YES completion:nil];
+        previewControllerShare = NULL;
+    }
 }
 
 +(void)previewController:(RPPreviewViewController *)previewController didFinishWithActivityTypes:(NSSet <NSString *>*)activityTypes {
