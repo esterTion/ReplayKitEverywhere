@@ -11,8 +11,14 @@
 #endif
 
 #import <Foundation/Foundation.h>
-
 #import <ReplayKit/ReplayKit.h>
+#define LIGHTMESSAGING_TIMEOUT 500
+#import <LightMessaging/LightMessaging.h>
+
+LMConnection connection = {
+    MACH_PORT_NULL,
+    "com.estertion.replaykiteverywhere.lmserver"
+};
 
 
 @interface ReplayKitEverywhere : UIViewController
@@ -22,22 +28,64 @@ static RPPreviewViewController *previewControllerShare = NULL;
 
 @implementation ReplayKitEverywhere
 
++(void)warnWithError:(NSError *)error {
+    NSString *errorMessage;
+    switch([error code]) {
+        case RPRecordingErrorUserDeclined:
+            errorMessage = @"You've cancelled recording";
+            break;
+        case RPRecordingErrorDisabled:
+            errorMessage = @"Recording disabaled via parental controls";
+            break;
+        case RPRecordingErrorFailedToStart:
+            errorMessage = @"Failed to start recording";
+            break;
+        case RPRecordingErrorFailed:
+        case RPRecordingErrorUnknown:
+            errorMessage = @"Unknown error occurred";
+            break;
+        case RPRecordingErrorInsufficientStorage:
+            errorMessage = @"There's not enough storage available on the device for saving the recording";
+            break;
+        case RPRecordingErrorContentResize:
+            errorMessage = @"Recording interrupted by multitasking and content resizing";
+            break;
+        default:
+            errorMessage = [error localizedDescription];
+    }
+    [self showBulletin:errorMessage];
+}
+
++(void)showBulletin:(NSString *)message {
+    //send message
+    NSData *msg = [message dataUsingEncoding:NSUTF8StringEncoding];
+    SInt32 messageId = 0x1111; // this is arbitrary i think
+    LMConnectionSendOneWayData(&connection, messageId, (CFDataRef)msg);
+}
+
 +(void)startRec{
     
     RPScreenRecorder* recorder = RPScreenRecorder.sharedRecorder;
     
     if ([recorder respondsToSelector:@selector(startRecordingWithHandler:)]){
         //iOS 10+
+        recorder.microphoneEnabled = true;
         [recorder startRecordingWithHandler:^(NSError * error) {
             if(error != nil) {
+                [ReplayKitEverywhere warnWithError:error];
                 return;
+            } else {
+                [ReplayKitEverywhere showBulletin:@"Record started"];
             }
         }];
     } else {
         //iOS 9
         [recorder startRecordingWithMicrophoneEnabled:true handler:^(NSError * error) {
             if(error != nil) {
+                [ReplayKitEverywhere warnWithError:error];
                 return;
+            } else {
+                [ReplayKitEverywhere showBulletin:@"Record started"];
             }
         }];
     }
@@ -47,6 +95,7 @@ static RPPreviewViewController *previewControllerShare = NULL;
 +(void)stopRec{
     [[RPScreenRecorder sharedRecorder] stopRecordingWithHandler:^(RPPreviewViewController * _Nullable previewViewController, NSError * _Nullable error){
         if(error){
+            [ReplayKitEverywhere warnWithError:error];
             return;
         }else if(previewViewController != nil){
             
@@ -83,7 +132,6 @@ static RPPreviewViewController *previewControllerShare = NULL;
 }
 
 +(void)previewControllerDidFinish:(RPPreviewViewController *)previewController {
-    NSLog(@"previewControllerDidFinish");
     if (previewControllerShare != NULL) {
         [previewControllerShare dismissViewControllerAnimated:YES completion:nil];
         previewControllerShare = NULL;
@@ -91,7 +139,6 @@ static RPPreviewViewController *previewControllerShare = NULL;
 }
 
 +(void)previewController:(RPPreviewViewController *)previewController didFinishWithActivityTypes:(NSSet <NSString *>*)activityTypes {
-	NSLog(@"activity - %@",activityTypes);
 }
 
 @end

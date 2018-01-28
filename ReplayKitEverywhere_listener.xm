@@ -7,14 +7,58 @@
 //
 
 #import <libactivator/libactivator.h>
+#import <BulletinBoard/BBBulletinRequest.h>
 #import <SpringBoard/SpringBoard.h>
 #import <SpringBoard/SBAlertItemsController.h>
 #import <SpringBoard/SBApplication.h>
 #import <SpringBoard/SBApplicationController.h>
+#import <SpringBoard/SBBulletinBannerController.h>
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
 #import <notify.h>
 #import "ReplayKitEverywhere.h"
+#define LIGHTMESSAGING_TIMEOUT 500
+#import <LightMessaging/LightMessaging.h>
+
+void showBulletin(NSString *message) {
+	BBBulletinRequest *bulletin = [[%c(BBBulletinRequest) alloc] init];
+	bulletin.sectionID = @"com.estertion.replaykiteverywhere";
+	bulletin.title = @"ReplayKit Everywhere";
+	bulletin.message = message;
+	SBBulletinBannerController *controller = [%c(SBBulletinBannerController) sharedInstance];
+	if ([controller respondsToSelector:@selector(observer:addBulletin:forFeed:playLightsAndSirens:withReply:)])
+		[controller observer:nil addBulletin:bulletin forFeed:2 playLightsAndSirens:YES withReply:nil];
+	else if ([controller respondsToSelector:@selector(observer:addBulletin:forFeed:)])
+		[controller observer:nil addBulletin:bulletin forFeed:2];
+	[bulletin release];
+}
+
+//http://iphonedevwiki.net/index.php/LightMessaging
+void showBulletinListener(CFMachPortRef port, LMMessage *message, CFIndex size, void *info) {
+	// get the reply port
+	mach_port_t replyPort = message->head.msgh_remote_port;
+
+	// Check validity of message
+	if (!LMDataWithSizeIsValidMessage(message, size)) {
+		LMSendReply(replyPort, NULL, 0);
+		LMResponseBufferFree((LMResponseBuffer *)message);
+		return;
+	}
+    
+	// Get the data you received
+	void *data = LMMessageGetData(message);
+	size_t length = LMMessageGetDataLength(message);
+	// Make it into a CFDataRef object
+	CFDataRef cfdata = CFDataCreateWithBytesNoCopy(kCFAllocatorDefault, (const UInt8 *)data ?: (const UInt8 *)&data, length, kCFAllocatorNull);
+
+	NSString *msg = [[NSString alloc] initWithData:(NSData*)cfdata encoding:NSUTF8StringEncoding];;
+	showBulletin(msg);
+
+	// Free the CFDataRef object
+	if (cfdata) {
+		CFRelease(cfdata);
+	}
+}
 
 @interface RKEverywhereListener : NSObject <LAListener>
 @end
@@ -50,8 +94,8 @@ static NSArray *blackList = @[ @"MailAppController", @"FBWildeApplication" ];
 - (void)_run {
 	NSString *classString = NSStringFromClass([self class]);
 	if ([@"SpringBoard" isEqualToString:classString]) {
-		%log(@"Registering SpringBoard for activator events");
 		[LASharedActivator registerListener:[RKEverywhereListener new] forName:@"com.estertion.replaykiteverywhere"];
+		LMStartService((char *)"com.estertion.replaykiteverywhere.lmserver", CFRunLoopGetCurrent(), (CFMachPortCallBack)showBulletinListener);
 	} else if (![blackList containsObject:classString]) {
 		NSProcessInfo *processInfo = [NSClassFromString(@"NSProcessInfo") processInfo];
 		NSArray *args = processInfo.arguments;
