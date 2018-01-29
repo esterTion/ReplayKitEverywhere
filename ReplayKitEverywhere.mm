@@ -1,9 +1,8 @@
 //
-//  ReplayKitObj.mm
-//  ReplayKitObj
+//  ReplayKitEverywhere.mm
+//  ReplayKitEverywhere
 //
 //  Created by ester on 2017/12/12.
-//  Copyright (c) 2017年 __MyCompanyName__. All rights reserved.
 //
 
 #if TARGET_OS_SIMULATOR
@@ -35,7 +34,7 @@ static RPPreviewViewController *previewControllerShare = NULL;
             errorMessage = @"You've cancelled recording";
             break;
         case RPRecordingErrorDisabled:
-            errorMessage = @"Recording disabaled via parental controls";
+            errorMessage = @"Recording disabled via parental controls";
             break;
         case RPRecordingErrorFailedToStart:
             errorMessage = @"Failed to start recording";
@@ -115,9 +114,11 @@ static RPPreviewViewController *previewControllerShare = NULL;
     RPScreenRecorder* recorder = RPScreenRecorder.sharedRecorder;
     if (!recorder.available) {
         UIAlertController* alert = [UIAlertController alertControllerWithTitle:@"ReplayKit Everywhere"
-                                                                       message:@"ReplayKit is not available and cannot start the recording.\nAre you mirroring through Airplay? Or is another app using ReplayKit right now? "
+                                                                       message:[[NSBundle bundleWithPath:@"/Library/Application Support/ReplayKit Everywhere.bundle"] localizedStringForKey:@"RKE_NOT_AVAILABLE" value:@"ReplayKit is not available and cannot start the recording.\nAre you mirroring through Airplay? Or is another app using ReplayKit right now?" table:nil]
                                                                 preferredStyle:UIAlertControllerStyleAlert];
-        UIAlertAction* defaultAction = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault
+        UIAlertAction* defaultAction = [UIAlertAction actionWithTitle:[[NSBundle bundleWithIdentifier:@"com.apple.UIKit"] localizedStringForKey:@"Dismiss" value:@"" table:nil]
+
+ style:UIAlertActionStyleDefault
                                                               handler:^(UIAlertAction * action) {}];
         
         [alert addAction:defaultAction];

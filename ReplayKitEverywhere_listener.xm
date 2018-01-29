@@ -1,9 +1,8 @@
 //
-//  ReplayKitEverywhere_activator.m
-//  ReplayKitObj
+//  ReplayKitEverywhere_listener.m
+//  ReplayKitEverywhere
 //
-//  Created by lcz on 2018/1/17.
-//
+//  Created by ester on 2018/1/17.
 //
 
 #import <libactivator/libactivator.h>
@@ -19,6 +18,8 @@
 #import "ReplayKitEverywhere.h"
 #define LIGHTMESSAGING_TIMEOUT 500
 #import <LightMessaging/LightMessaging.h>
+
+static NSBundle *tweakBundle = NULL;
 
 void showBulletin(NSString *message) {
 	BBBulletinRequest *bulletin = [[%c(BBBulletinRequest) alloc] init];
@@ -52,7 +53,7 @@ void showBulletinListener(CFMachPortRef port, LMMessage *message, CFIndex size, 
 	CFDataRef cfdata = CFDataCreateWithBytesNoCopy(kCFAllocatorDefault, (const UInt8 *)data ?: (const UInt8 *)&data, length, kCFAllocatorNull);
 
 	NSString *msg = [[NSString alloc] initWithData:(NSData*)cfdata encoding:NSUTF8StringEncoding];;
-	showBulletin(msg);
+	showBulletin([tweakBundle localizedStringForKey:msg value:@"" table:nil]);
 
 	// Free the CFDataRef object
 	if (cfdata) {
@@ -76,10 +77,10 @@ void showBulletinListener(CFMachPortRef port, LMMessage *message, CFIndex size, 
 	return @"ReplayKit Everywhere";
 }
 - (NSString *)activator:(LAActivator *)activator requiresLocalizedTitleForListenerName:(NSString *)listenerName {
-	return @"Start/Stop recording";
+	return [tweakBundle localizedStringForKey:@"Start/Stop recording" value:@"" table:nil];
 }
 - (NSString *)activator:(LAActivator *)activator requiresLocalizedDescriptionForListenerName:(NSString *)listenerName {
-	return @"Record your screen with/withour microphone, right in the app";
+	return [tweakBundle localizedStringForKey:@"Record your screen with/withour microphone, right in the app" value:@"" table:nil];
 }
 - (NSArray *)activator:(LAActivator *)activator requiresCompatibleEventModesForListenerWithName:(NSString *)listenerName {
 	return [NSArray arrayWithObjects:@"application", nil];
@@ -96,6 +97,7 @@ static NSArray *blackList = @[ @"MailAppController", @"FBWildeApplication" ];
 	if ([@"SpringBoard" isEqualToString:classString]) {
 		[LASharedActivator registerListener:[RKEverywhereListener new] forName:@"com.estertion.replaykiteverywhere"];
 		LMStartService((char *)"com.estertion.replaykiteverywhere.lmserver", CFRunLoopGetCurrent(), (CFMachPortCallBack)showBulletinListener);
+		tweakBundle = [NSBundle bundleWithPath:@"/Library/Application Support/ReplayKit Everywhere.bundle"];
 	} else if (![blackList containsObject:classString]) {
 		NSProcessInfo *processInfo = [NSClassFromString(@"NSProcessInfo") processInfo];
 		NSArray *args = processInfo.arguments;
