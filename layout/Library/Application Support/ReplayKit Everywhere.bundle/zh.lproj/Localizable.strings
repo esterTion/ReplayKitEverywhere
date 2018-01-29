@@ -22,5 +22,7 @@
   <string>录制已开始</string>
   <key>RKE_NOT_AVAILABLE</key>
   <string>ReplayKit当前不可用&#10;您是否正在使用AriPlay镜像，或另一程序正在录制？</string>
+  <key>ReplayKit is not compatible with this app</key>
+  <string>ReplayKit与当前程序不兼容</string>
 </dict>
 </plist>

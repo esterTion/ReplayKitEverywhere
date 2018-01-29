@@ -66,6 +66,7 @@ static RPPreviewViewController *previewControllerShare = NULL;
     
     RPScreenRecorder* recorder = RPScreenRecorder.sharedRecorder;
     
+    @try {
     if ([recorder respondsToSelector:@selector(startRecordingWithHandler:)]){
         //iOS 10+
         recorder.microphoneEnabled = true;
@@ -87,6 +88,10 @@ static RPPreviewViewController *previewControllerShare = NULL;
                 [ReplayKitEverywhere showBulletin:@"Record started"];
             }
         }];
+    }
+
+    } @catch (NSException *exception) {
+        [ReplayKitEverywhere showBulletin:@"ReplayKit is not compatible with this app"];
     }
     
 }
