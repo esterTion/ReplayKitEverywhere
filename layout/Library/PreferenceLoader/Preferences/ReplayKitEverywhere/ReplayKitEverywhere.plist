@@ -1,0 +1,59 @@
+{
+	entry = {
+		cell = "PSLinkCell";
+		icon = "ReplayKitEverywhere.png";
+		label = "ReplayKit Everywhere";
+	};
+	title = "ReplayKit Everywhere";
+	items = (
+		{
+			cell = "PSGroupCell";
+			label = "Set a gesture";
+		},
+		{
+			cell = "PSLinkCell";
+			label = "Activation Methods";
+			isController = 1;
+			bundle = "LibActivator";
+			activatorListener = "com.estertion.replaykiteverywhere";
+		},
+		{
+			cell = "PSGroupCell";
+			label = "ReplayKit Settings";
+			footerText = QUALITY_FOOT;
+		},
+		{
+			cell = "PSLinkListCell";
+			label = "Record quality";
+			detail = "PSListItemsController";
+			defaults = "com.estertion.replaykiteverywhere";
+			default = "0";
+			key = "quality";
+			staticTextMessage = QUALITY_DESCRPITION;
+			validValues = (
+				0,
+				1,
+				2,
+				3
+			);
+			validTitles = (
+				"Space saver",
+				"Balanced size",
+				"Focus on quality",
+				"Xtreme detailed"
+			);
+		},
+		{
+			cell = "PSGroupCell";
+			footerText = TEMPORARY_FILE_DESCRIPTION;
+		},
+		{
+			cell = "PSGroupCell";
+			footerText = TWEAK_ABOUT;
+		},
+		{
+			cell = "PSGroupCell";
+			footerText = "© 2018 esterTion";
+		}
+	);
+}

@@ -9,35 +9,65 @@
 #import <AVFoundation/AVFoundation.h>
 #import <AudioToolbox/AudioToolbox.h>
 
+NSNumber* getQualitySetting() {
+  NSDictionary *setting = [NSDictionary dictionaryWithContentsOfFile: @"/var/mobile/Library/Preferences/com.estertion.replaykiteverywhere.plist"];
+  if (setting == NULL) return @0;
+  NSString *quality = [setting objectForKey:@"quality"];
+  if (quality == NULL) return @0;
+  NSNumberFormatter *f = [[NSNumberFormatter alloc] init];
+  f.numberStyle = NSNumberFormatterDecimalStyle;
+  NSNumber *qua = [f numberFromString:quality];
+  [f release];
+  if (qua == NULL) return @0;
+  if ([qua compare:@0] == NSOrderedDescending && [qua compare:@4] == NSOrderedAscending) return qua;
+  else return @0;
+}
+
 %hookf(OSStatus, AudioQueueNewInput, AudioStreamBasicDescription *inFormat, AudioQueueInputCallback inCallbackProc, void *inUserData, CFRunLoopRef inCallbackRunLoop, CFStringRef inCallbackRunLoopMode, UInt32 inFlags, AudioQueueRef  _Nullable *outAQ) {
     inFormat->mBytesPerPacket = 4;
     inFormat->mBytesPerFrame = 4;
     inFormat->mChannelsPerFrame = 2;
+    NSNumber *quality = getQualitySetting();
+    if ([quality isEqualToNumber:@2] || [quality isEqualToNumber:@3]) {
+      inFormat->mSampleRate = 48000.0;
+    }
 
-    NSLog(@"AudioStreamBasicDescription:\n mSampleRate: %f\n mFormatID:%u\n mFormatFlags:%d\n mFramesPerPacket:%d\n mChannelsPerFrame:%d\n mBitsPerChannel:%d\n mBytesPerPacket:%d\n mBytesPerFrame:%d", 
-      inFormat->mSampleRate,
-      inFormat->mFormatID,
-      inFormat->mFormatFlags,
-      inFormat->mFramesPerPacket,
-      inFormat->mChannelsPerFrame,
-      inFormat->mBitsPerChannel,
-      inFormat->mBytesPerPacket ,
-      inFormat->mBytesPerFrame );
     return %orig;
 }
+
+static NSDictionary *videoBitrate = @{
+  @1: @4000000LL,
+  @2: @8000000LL,
+  @3: @15000000LL,
+};
+static NSDictionary *audioBitrate = @{
+  @1: @128000LL,
+  @2: @256000LL,
+  @3: @320000LL,
+};
+static NSDictionary *audioSampleRate = @{
+  @1: @44100.0,
+  @2: @48000.0,
+  @3: @48000.0,
+};
 
 %hook AVAssetWriterInput
 
 - (instancetype)initWithMediaType:(NSString *)mediaType outputSettings:(NSDictionary<NSString *, id> *)outputSettings {
-  if ([mediaType isEqualToString:@"soun"]) {
-    NSMutableDictionary *modify = [[NSMutableDictionary alloc] init];
-    [modify addEntriesFromDictionary:outputSettings];
-    [modify setValue:[NSNumber numberWithDouble:44100.0] forKey:AVSampleRateKey];
-    [modify setValue:[NSNumber numberWithInt:256000LL] forKey:AVEncoderBitRateKey];
+  NSNumber *quality = getQualitySetting();
+  if (![quality isEqualToNumber:@0]) {
+    NSMutableDictionary *modify = [outputSettings mutableCopy];
+    if ([mediaType isEqualToString:@"vide"]) {
+      NSMutableDictionary *compressModify = [modify[@"AVVideoCompressionPropertiesKey"] mutableCopy];
+      compressModify[AVVideoAverageBitRateKey] = videoBitrate[quality];
+      modify[@"AVVideoCompressionPropertiesKey"] = compressModify;
+    } else if ([mediaType isEqualToString:@"soun"]) {
+      modify[AVSampleRateKey] = audioSampleRate[quality];
+      modify[AVEncoderBitRateKey] = audioBitrate[quality];
+    }
     outputSettings = [NSDictionary dictionaryWithDictionary:modify];
     [modify release];
   }
-  NSLog(@"[rke-avfoundation-param-logger] initWithMediaType:%@ outputSettings:%@", mediaType, outputSettings);
 
   return %orig(mediaType, outputSettings);
 }

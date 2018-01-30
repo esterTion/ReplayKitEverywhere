@@ -97,7 +97,7 @@ static NSArray *blackList = @[ @"MailAppController", @"FBWildeApplication" ];
 	if ([@"SpringBoard" isEqualToString:classString]) {
 		[LASharedActivator registerListener:[RKEverywhereListener new] forName:@"com.estertion.replaykiteverywhere"];
 		LMStartService((char *)"com.estertion.replaykiteverywhere.lmserver", CFRunLoopGetCurrent(), (CFMachPortCallBack)showBulletinListener);
-		tweakBundle = [NSBundle bundleWithPath:@"/Library/Application Support/ReplayKit Everywhere.bundle"];
+		tweakBundle = [NSBundle bundleWithPath:@"/Library/PreferenceLoader/Preferences/ReplayKitEverywhere"];
 	} else if (![blackList containsObject:classString]) {
 		NSProcessInfo *processInfo = [NSClassFromString(@"NSProcessInfo") processInfo];
 		NSArray *args = processInfo.arguments;

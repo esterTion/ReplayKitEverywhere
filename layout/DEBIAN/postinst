@@ -1,0 +1,3 @@
+echo "Restarting replayd"
+launchctl stop com.apple.replayd
+launchctl start com.apple.replayd

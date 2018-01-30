@@ -119,7 +119,7 @@ static RPPreviewViewController *previewControllerShare = NULL;
     RPScreenRecorder* recorder = RPScreenRecorder.sharedRecorder;
     if (!recorder.available) {
         UIAlertController* alert = [UIAlertController alertControllerWithTitle:@"ReplayKit Everywhere"
-                                                                       message:[[NSBundle bundleWithPath:@"/Library/Application Support/ReplayKit Everywhere.bundle"] localizedStringForKey:@"RKE_NOT_AVAILABLE" value:@"ReplayKit is not available and cannot start the recording.\nAre you mirroring through Airplay? Or is another app using ReplayKit right now?" table:nil]
+                                                                       message:[[NSBundle bundleWithPath:@"/Library/PreferenceLoader/Preferences/ReplayKitEverywhere"] localizedStringForKey:@"RKE_NOT_AVAILABLE" value:@"ReplayKit is not available and cannot start the recording.\nAre you mirroring through Airplay? Or is another app using ReplayKit right now?" table:nil]
                                                                 preferredStyle:UIAlertControllerStyleAlert];
         UIAlertAction* defaultAction = [UIAlertAction actionWithTitle:[[NSBundle bundleWithIdentifier:@"com.apple.UIKit"] localizedStringForKey:@"Dismiss" value:@"" table:nil]
 
