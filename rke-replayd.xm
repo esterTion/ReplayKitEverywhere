@@ -9,26 +9,29 @@
 #import <AVFoundation/AVFoundation.h>
 #import <AudioToolbox/AudioToolbox.h>
 
-NSNumber* getQualitySetting() {
+NSString* getSettingValue(NSString *key, NSString *defaultValue) {
   NSDictionary *setting = [NSDictionary dictionaryWithContentsOfFile: @"/var/mobile/Library/Preferences/com.estertion.replaykiteverywhere.plist"];
-  if (setting == NULL) return @0;
-  NSString *quality = [setting objectForKey:@"quality"];
-  if (quality == NULL) return @0;
-  NSNumberFormatter *f = [[NSNumberFormatter alloc] init];
-  f.numberStyle = NSNumberFormatterDecimalStyle;
-  NSNumber *qua = [f numberFromString:quality];
-  [f release];
-  if (qua == NULL) return @0;
-  if ([qua compare:@0] == NSOrderedDescending && [qua compare:@4] == NSOrderedAscending) return qua;
-  else return @0;
+  if (setting == NULL) return defaultValue;
+  NSObject *value = [setting objectForKey:key];
+  if (value == NULL) return defaultValue;
+
+  NSString *valueStr;
+  if ([value isKindOfClass:[NSString class]]) {
+      valueStr = (NSString *)value;
+  } else if ([value isKindOfClass:[NSNumber class]]) {
+      valueStr = [(NSNumber *)value stringValue];
+  } else {
+      valueStr = defaultValue;
+  }
+  return valueStr;
 }
 
 %hookf(OSStatus, AudioQueueNewInput, AudioStreamBasicDescription *inFormat, AudioQueueInputCallback inCallbackProc, void *inUserData, CFRunLoopRef inCallbackRunLoop, CFStringRef inCallbackRunLoopMode, UInt32 inFlags, AudioQueueRef  _Nullable *outAQ) {
     inFormat->mBytesPerPacket = 4;
     inFormat->mBytesPerFrame = 4;
     inFormat->mChannelsPerFrame = 2;
-    NSNumber *quality = getQualitySetting();
-    if ([quality isEqualToNumber:@2] || [quality isEqualToNumber:@3]) {
+    NSString *quality = getSettingValue(@"quality", @"0");
+    if ([quality isEqualToString:@"2"] || [quality isEqualToString:@"3"]) {
       inFormat->mSampleRate = 48000.0;
     }
 
@@ -36,28 +39,29 @@ NSNumber* getQualitySetting() {
 }
 
 static NSDictionary *videoBitrate = @{
-  @1: @4000000LL,
-  @2: @8000000LL,
-  @3: @15000000LL,
+  @"1": @4000000LL,
+  @"2": @8000000LL,
+  @"3": @15000000LL
 };
 static NSDictionary *audioBitrate = @{
-  @1: @128000LL,
-  @2: @256000LL,
-  @3: @320000LL,
+  @"1": @128000LL,
+  @"2": @256000LL,
+  @"3": @320000LL
 };
 static NSDictionary *audioSampleRate = @{
-  @1: @44100.0,
-  @2: @48000.0,
-  @3: @48000.0,
+  @"1": @44100.0,
+  @"2": @48000.0,
+  @"3": @48000.0
 };
 
 %hook AVAssetWriterInput
 
 - (instancetype)initWithMediaType:(NSString *)mediaType outputSettings:(NSDictionary<NSString *, id> *)outputSettings {
-  NSNumber *quality = getQualitySetting();
-  if (![quality isEqualToNumber:@0]) {
+  NSString *quality = getSettingValue(@"quality", @"0");
+  if (videoBitrate[quality] != nil) {
     NSMutableDictionary *modify = [outputSettings mutableCopy];
     if ([mediaType isEqualToString:@"vide"]) {
+      NSLog(@"[ReplayKit Everywhere] Recording at quality level %@", quality);
       NSMutableDictionary *compressModify = [modify[@"AVVideoCompressionPropertiesKey"] mutableCopy];
       compressModify[AVVideoAverageBitRateKey] = videoBitrate[quality];
       modify[@"AVVideoCompressionPropertiesKey"] = compressModify;

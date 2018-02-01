@@ -19,6 +19,22 @@ LMConnection connection = {
     "com.estertion.replaykiteverywhere.lmserver"
 };
 
+NSString* getSettingValue(NSString *key, NSString *defaultValue) {
+  NSDictionary *setting = [NSDictionary dictionaryWithContentsOfFile: @"/var/mobile/Library/Preferences/com.estertion.replaykiteverywhere.plist"];
+  if (setting == NULL) return defaultValue;
+  NSObject *value = [setting objectForKey:key];
+  if (value == NULL) return defaultValue;
+
+  NSString *valueStr;
+  if ([value isKindOfClass:[NSString class]]) {
+      valueStr = (NSString *)value;
+  } else if ([value isKindOfClass:[NSNumber class]]) {
+      valueStr = [(NSNumber *)value stringValue];
+  } else {
+      valueStr = defaultValue;
+  }
+  return valueStr;
+}
 
 @interface ReplayKitEverywhere : UIViewController
 @end
@@ -67,9 +83,13 @@ static RPPreviewViewController *previewControllerShare = NULL;
     RPScreenRecorder* recorder = RPScreenRecorder.sharedRecorder;
     
     @try {
+        NSString *microphoneEnabledStr = getSettingValue(@"microphoneEnabled", @"1");
+        NSLog(@"[ReplayKit Everywhere] Retrived setting microphoneEnabled %@", microphoneEnabledStr);
+        BOOL microphoneEnabled = [microphoneEnabledStr isEqualToString:@"1"];
     if ([recorder respondsToSelector:@selector(startRecordingWithHandler:)]){
         //iOS 10+
-        recorder.microphoneEnabled = true;
+        if (microphoneEnabled)
+            recorder.microphoneEnabled = true;
         [recorder startRecordingWithHandler:^(NSError * error) {
             if(error != nil) {
                 [ReplayKitEverywhere warnWithError:error];
@@ -80,7 +100,7 @@ static RPPreviewViewController *previewControllerShare = NULL;
         }];
     } else {
         //iOS 9
-        [recorder startRecordingWithMicrophoneEnabled:true handler:^(NSError * error) {
+        [recorder startRecordingWithMicrophoneEnabled:microphoneEnabled handler:^(NSError * error) {
             if(error != nil) {
                 [ReplayKitEverywhere warnWithError:error];
                 return;
@@ -119,7 +139,7 @@ static RPPreviewViewController *previewControllerShare = NULL;
     RPScreenRecorder* recorder = RPScreenRecorder.sharedRecorder;
     if (!recorder.available) {
         UIAlertController* alert = [UIAlertController alertControllerWithTitle:@"ReplayKit Everywhere"
-                                                                       message:[[NSBundle bundleWithPath:@"/Library/PreferenceLoader/Preferences/ReplayKitEverywhere"] localizedStringForKey:@"RKE_NOT_AVAILABLE" value:@"ReplayKit is not available and cannot start the recording.\nAre you mirroring through Airplay? Or is another app using ReplayKit right now?" table:nil]
+                                                                       message:[[NSBundle bundleWithPath:@"/Library/PreferenceBundles/ReplayKitEverywherePrefs.bundle"] localizedStringForKey:@"RKE_NOT_AVAILABLE" value:@"ReplayKit is not available and cannot start the recording.\nAre you mirroring through Airplay? Or is another app using ReplayKit right now?" table:nil]
                                                                 preferredStyle:UIAlertControllerStyleAlert];
         UIAlertAction* defaultAction = [UIAlertAction actionWithTitle:[[NSBundle bundleWithIdentifier:@"com.apple.UIKit"] localizedStringForKey:@"Dismiss" value:@"" table:nil]
 

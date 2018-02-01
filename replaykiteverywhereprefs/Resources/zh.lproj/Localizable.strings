@@ -1,0 +1,16 @@
+{
+  "Start/Stop recording" = "开始/停止录制";
+  "Record your screen with/withour microphone, right in the app" = "在程序内录制屏幕，可选录制麦克风";
+  "You've cancelled recording" = "已取消录制";
+  "Recording disabled via parental controls" = "录制功能已被家长控制禁用";
+  "Failed to start recording" = "开始录制失败";
+  "Unknown error occurred" = "发生了未知错误";
+  "There's not enough storage available on the device for saving the recording" = "设备空间不足";
+  "Recording interrupted by multitasking and content resizing" = "录制因内容大小变化被中断";
+  "Record started" = "录制已开始";
+  "RKE_NOT_AVAILABLE" = "ReplayKit当前不可用\n您是否正在使用AriPlay镜像，或另一程序正在录制？";
+  "ReplayKit is not compatible with this app" = "ReplayKit与当前程序不兼容";
+  "Delete all temporary files?" = "删除所有临时文件？";
+  "This action cannot be reverted" = "这个操作不可撤销";
+  "Files deleted" = "文件已删除";
+}

@@ -90,15 +90,16 @@ void showBulletinListener(CFMachPortRef port, LMMessage *message, CFIndex size, 
 
 %hook UIApplication
 
-static NSArray *blackList = @[ @"MailAppController", @"FBWildeApplication" ];
 
 - (void)_run {
 	NSString *classString = NSStringFromClass([self class]);
 	if ([@"SpringBoard" isEqualToString:classString]) {
 		[LASharedActivator registerListener:[RKEverywhereListener new] forName:@"com.estertion.replaykiteverywhere"];
 		LMStartService((char *)"com.estertion.replaykiteverywhere.lmserver", CFRunLoopGetCurrent(), (CFMachPortCallBack)showBulletinListener);
-		tweakBundle = [NSBundle bundleWithPath:@"/Library/PreferenceLoader/Preferences/ReplayKitEverywhere"];
-	} else if (![blackList containsObject:classString]) {
+		tweakBundle = [NSBundle bundleWithPath:@"/Library/PreferenceBundles/ReplayKitEverywherePrefs.bundle"];
+		NSLog(@"[ReplayKit Everywhere] Registered activator listener");
+	} else {
+		@try{
 		NSProcessInfo *processInfo = [NSClassFromString(@"NSProcessInfo") processInfo];
 		NSArray *args = processInfo.arguments;
 		NSUInteger count = args.count;
@@ -115,12 +116,26 @@ static NSArray *blackList = @[ @"MailAppController", @"FBWildeApplication" ];
 							[ReplayKitEverywhere startOrStopRec];	
 						}
 					);
+					NSLog(@"[ReplayKit Everywhere] Started record listener for app %@", bundleId);
 				}
 			}
 		}
+		} @catch (NSException *exception) {
+        NSLog(@"[ReplayKit Everywhere] Not compatible with app %@", classString);
+    }
 	}
 
  %orig;
 }
 
+%end
+
+%hook RPPreviewViewController 
+- (BOOL)shouldAutorotate
+{
+    return NO;
+}
+- (NSUInteger)supportedInterfaceOrientations {
+    return [[UIApplication sharedApplication].keyWindow.rootViewController supportedInterfaceOrientations];
+}
 %end

@@ -1,0 +1,8 @@
+{
+  NOTICE_TEXT = "NOTICE: If you found an app cannot start / doesn't show the preview or other error, that indicates the app is not compatible with ReplayKit recording";
+  QUALITY_FOOT = "Quality setting will affect app/game with native ReplayKit support. ";
+  QUALITY_DESCRPITION = "A minute of video will be approximately: \n· 15MB with Space saver \n· 30MB with Balanced size \n· 60MB with Focus on quality \n· 112MB with Xtreme detailed \n\n\n\nIf you are curious: (bitrate parameter, video + audio)\n· 2mbps + 64kbps@22050Hz with Space saver (system default quality) \n· 4mbps + 128kbps@44100Hz with Balanced size \n· 8mbps + 256kbps@48000Hz with Focus on quality \n· 15mbps + 320kbps@48000Hz with Xtreme detailed";
+  TEMPORARY_FILE_DESCRIPTION = "Temporary record files are located in /var/mobile/Library/ReplayKit. \nThey won't be deleted automatically and may stay in the folder until next record in the same app overwrites it. ";
+  TWEAK_ABOUT = "ReplayKit is an iOS development framework provided by Apple Inc. \nReplayKit Everywhere is a tweak that helps you enable ReplayKit for all the apps. ";
+  ENABLE_MICROPHONE_FOOT = "Global toggle for this tweak. Game support ReplayKit themselves will not be affected. \nYou will still be prompted if you want microphone even with this setting on. \nSound produced by app is always recorded. (Some apps use incompatible method to play audio which can't be recorded)";
+}

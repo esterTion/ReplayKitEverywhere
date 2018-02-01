@@ -1,6 +1,0 @@
-{
-  QUALITY_FOOT = "Quality setting will effect app/game with native ReplayKit support. ";
-  QUALITY_DESCRPITION = "A minute of video will be approximately: \n· 15MB with Space saver \n· 30MB with Balanced size \n· 60MB with Focus on quality \n· 112MB with Xtreme detailed \n\n\n\nIf you are curious: (bitrate parameter, video + audio)\n· 2mbps + 64kbps@22050Hz with Space saver (system default quality) \n· 4mbps + 128kbps@44100Hz with Balanced size \n· 8mbps + 256kbps@48000Hz with Focus on quality \n· 15mbps + 320kbps@48000Hz with Xtreme detailed";
-  TEMPORARY_FILE_DESCRIPTION = "Temporary record files are located in /var/mobile/Library/ReplayKit. \nIf one record has been properly saved/cancelled, they will be deleted from temporary directory. \nOtherwise it may stay in the folder until next record in the same app replace it. ";
-  TWEAK_ABOUT = "ReplayKit is an iOS development framework provided by Apple Inc. \nReplayKit Everywhere is a tweak that help you enable ReplayKit for all the apps. ";
-}
