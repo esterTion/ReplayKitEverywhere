@@ -9,7 +9,7 @@
 #import <AVFoundation/AVFoundation.h>
 #import <AudioToolbox/AudioToolbox.h>
 
-NSString* getSettingValue(NSString *key, NSString *defaultValue) {
+NSString* RKEGetSettingValue(NSString *key, NSString *defaultValue) {
   NSDictionary *setting = [NSDictionary dictionaryWithContentsOfFile: @"/var/mobile/Library/Preferences/com.estertion.replaykiteverywhere.plist"];
   if (setting == NULL) return defaultValue;
   NSObject *value = [setting objectForKey:key];
@@ -30,7 +30,7 @@ NSString* getSettingValue(NSString *key, NSString *defaultValue) {
     inFormat->mBytesPerPacket = 4;
     inFormat->mBytesPerFrame = 4;
     inFormat->mChannelsPerFrame = 2;
-    NSString *quality = getSettingValue(@"quality", @"0");
+    NSString *quality = RKEGetSettingValue(@"quality", @"0");
     if ([quality isEqualToString:@"2"] || [quality isEqualToString:@"3"]) {
       inFormat->mSampleRate = 48000.0;
     }
@@ -57,7 +57,7 @@ static NSDictionary *audioSampleRate = @{
 %hook AVAssetWriterInput
 
 - (instancetype)initWithMediaType:(NSString *)mediaType outputSettings:(NSDictionary<NSString *, id> *)outputSettings {
-  NSString *quality = getSettingValue(@"quality", @"0");
+  NSString *quality = RKEGetSettingValue(@"quality", @"0");
   if (videoBitrate[quality] != nil) {
     NSMutableDictionary *modify = [outputSettings mutableCopy];
     if ([mediaType isEqualToString:@"vide"]) {

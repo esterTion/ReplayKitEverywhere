@@ -19,7 +19,7 @@ LMConnection connection = {
     "com.estertion.replaykiteverywhere.lmserver"
 };
 
-NSString* getSettingValue(NSString *key, NSString *defaultValue) {
+NSString* RKEGetSettingValue(NSString *key, NSString *defaultValue) {
   NSDictionary *setting = [NSDictionary dictionaryWithContentsOfFile: @"/var/mobile/Library/Preferences/com.estertion.replaykiteverywhere.plist"];
   if (setting == NULL) return defaultValue;
   NSObject *value = [setting objectForKey:key];
@@ -83,13 +83,12 @@ static RPPreviewViewController *previewControllerShare = NULL;
     RPScreenRecorder* recorder = RPScreenRecorder.sharedRecorder;
     
     @try {
-        NSString *microphoneEnabledStr = getSettingValue(@"microphoneEnabled", @"1");
+        NSString *microphoneEnabledStr = RKEGetSettingValue(@"microphoneEnabled", @"1");
         NSLog(@"[ReplayKit Everywhere] Retrived setting microphoneEnabled %@", microphoneEnabledStr);
         BOOL microphoneEnabled = [microphoneEnabledStr isEqualToString:@"1"];
     if ([recorder respondsToSelector:@selector(startRecordingWithHandler:)]){
         //iOS 10+
-        if (microphoneEnabled)
-            recorder.microphoneEnabled = true;
+        recorder.microphoneEnabled = microphoneEnabled;
         [recorder startRecordingWithHandler:^(NSError * error) {
             if(error != nil) {
                 [ReplayKitEverywhere warnWithError:error];
