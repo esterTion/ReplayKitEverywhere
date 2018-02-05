@@ -62,11 +62,17 @@
 			cell = "PSTitleValueCell";
 			label = "Total size";
 			get = "getTempFileSize";
+			id = "totalSize";
 		},
 		{
 			cell = "PSButtonCell";
 			label = "Delete all";
 			action = "deleteTempFiles";
+		},
+		{
+			cell = "PSButtonCell";
+			label = "Open directory (iFile)";
+			action = "openTempByIFile";
 		},
 		{
 			cell = "PSGroupCell";

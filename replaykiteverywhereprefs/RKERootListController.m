@@ -40,11 +40,23 @@ static NSBundle *uikitBundle;
 		UIAlertAction* action = [UIAlertAction actionWithTitle:[uikitBundle localizedStringForKey:@"Dismiss" value:@"" table:nil] style:UIAlertActionStyleDefault handler:nil];
 		[alert addAction:action];
 		[[UIApplication sharedApplication].keyWindow.rootViewController presentViewController:alert animated:YES completion:nil];
+		[self reloadSpecifierID:@"totalSize"];
 	}];
   [alert addAction:confirmAction];
   UIAlertAction* cancelAction = [UIAlertAction actionWithTitle:[uikitBundle localizedStringForKey:@"Cancel" value:@"" table:nil] style:UIAlertActionStyleCancel handler:nil];
   [alert addAction:cancelAction];
   [[UIApplication sharedApplication].keyWindow.rootViewController presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)openTempByIFile {
+	UIApplication *application = [UIApplication sharedApplication];
+	NSURL *URL = [NSURL URLWithString:@"ifile:/var/mobile/Library/ReplayKit"];
+	[[UIApplication sharedApplication ] openURL:URL ];
+	if ([application respondsToSelector:@selector(openURL:options:completionHandler:)]) {
+    [application openURL:URL options:@{} completionHandler:^(BOOL success){}];
+  } else {
+    [application openURL:URL];
+  }
 }
 
 - (NSString *)prettifySize:(unsigned int)size {
