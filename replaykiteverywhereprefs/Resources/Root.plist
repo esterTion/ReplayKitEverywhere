@@ -33,6 +33,13 @@
 			footerText = QUALITY_FOOT;
 		},
 		{
+			cell = "PSSwitchCell";
+			label = "Skip permission granting";
+			defaults = "com.estertion.replaykiteverywhere";
+			default = "0";
+			key = "skipWarn";
+		},
+		{
 			cell = "PSLinkListCell";
 			label = "Record quality";
 			detail = "PSListItemsController";

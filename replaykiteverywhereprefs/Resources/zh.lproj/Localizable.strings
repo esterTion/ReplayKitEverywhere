@@ -1,6 +1,7 @@
 {
-  "Start/Stop recording" = "开始/停止录制";
-  "Record your screen with/withour microphone, right in the app" = "在程序内录制屏幕，可选录制麦克风";
+  "Start recording" = "开始录制";
+  "Stop recording" = "停止录制";
+  "Record your screen with/without microphone, right in the app" = "在程序内录制屏幕，可选录制麦克风";
   "You've cancelled recording" = "已取消录制";
   "Recording disabled via parental controls" = "录制功能已被家长控制禁用";
   "Failed to start recording" = "开始录制失败";

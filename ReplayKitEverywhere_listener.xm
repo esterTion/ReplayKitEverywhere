@@ -13,6 +13,7 @@
 #import <SpringBoard/SBApplicationController.h>
 #import <SpringBoard/SBBulletinBannerController.h>
 #import <Foundation/Foundation.h>
+#import <ReplayKit/ReplayKit.h>
 #import <objc/runtime.h>
 #import <notify.h>
 #import "ReplayKitEverywhere.h"
@@ -64,6 +65,7 @@ void showBulletinListener(CFMachPortRef port, LMMessage *message, CFIndex size, 
 @interface RKEverywhereListener : NSObject <LAListener>
 @end
 
+static BOOL recording = false;
 @implementation RKEverywhereListener
 
 - (void)activator:(LAActivator *)activator receiveEvent:(LAEvent *)event {
@@ -77,10 +79,13 @@ void showBulletinListener(CFMachPortRef port, LMMessage *message, CFIndex size, 
 	return @"ReplayKit Everywhere";
 }
 - (NSString *)activator:(LAActivator *)activator requiresLocalizedTitleForListenerName:(NSString *)listenerName {
-	return [tweakBundle localizedStringForKey:@"Start/Stop recording" value:@"" table:nil];
+	if (recording)
+	return [tweakBundle localizedStringForKey:@"Stop recording" value:@"" table:nil];
+	else
+	return [tweakBundle localizedStringForKey:@"Start recording" value:@"" table:nil];
 }
 - (NSString *)activator:(LAActivator *)activator requiresLocalizedDescriptionForListenerName:(NSString *)listenerName {
-	return [tweakBundle localizedStringForKey:@"Record your screen with/withour microphone, right in the app" value:@"" table:nil];
+	return [tweakBundle localizedStringForKey:@"Record your screen with/without microphone, right in the app" value:@"" table:nil];
 }
 - (NSArray *)activator:(LAActivator *)activator requiresCompatibleEventModesForListenerWithName:(NSString *)listenerName {
 	return [NSArray arrayWithObjects:@"application", nil];
@@ -88,47 +93,73 @@ void showBulletinListener(CFMachPortRef port, LMMessage *message, CFIndex size, 
 
 @end
 
-%hook UIApplication
+static id observer;
+%ctor
+{
+    @autoreleasepool
+    {
+      observer = [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidFinishLaunchingNotification object:nil queue:[NSOperationQueue mainQueue]
+		  usingBlock:^(NSNotification *notification) {
+							NSString *bundleId = [[NSBundle mainBundle] bundleIdentifier];
+              @try {
+								if ([bundleId isEqualToString:@"com.apple.springboard"]) {
 
+									[LASharedActivator registerListener:[RKEverywhereListener new] forName:@"com.estertion.replaykiteverywhere"];
+									LMStartService((char *)"com.estertion.replaykiteverywhere.lmserver", CFRunLoopGetCurrent(), (CFMachPortCallBack)showBulletinListener);
+									tweakBundle = [NSBundle bundleWithPath:@"/Library/PreferenceBundles/ReplayKitEverywherePrefs.bundle"];
+									NSLog(@"[ReplayKit Everywhere] Registered activator listener");
+									int notify_token;
+									notify_register_dispatch([@"com.estertion.replaykiteverywhere.record_started" cStringUsingEncoding:NSUTF8StringEncoding],
+										&notify_token,
+										dispatch_get_main_queue(),^(int token) {
+											NSLog(@"[ReplayKit Everywhere] recording change to 1");
+											recording = true;
+										}
+									);
+									notify_register_dispatch([@"com.estertion.replaykiteverywhere.record_stopped" cStringUsingEncoding:NSUTF8StringEncoding],
+										&notify_token,
+										dispatch_get_main_queue(),^(int token) {
+											NSLog(@"[ReplayKit Everywhere] recording change to 0");
+											recording = false;
+										}
+									);
 
-- (void)_run {
-	NSString *classString = NSStringFromClass([self class]);
-	if ([@"SpringBoard" isEqualToString:classString]) {
-		[LASharedActivator registerListener:[RKEverywhereListener new] forName:@"com.estertion.replaykiteverywhere"];
-		LMStartService((char *)"com.estertion.replaykiteverywhere.lmserver", CFRunLoopGetCurrent(), (CFMachPortCallBack)showBulletinListener);
-		tweakBundle = [NSBundle bundleWithPath:@"/Library/PreferenceBundles/ReplayKitEverywherePrefs.bundle"];
-		NSLog(@"[ReplayKit Everywhere] Registered activator listener");
-	} else {
-		@try{
-		NSProcessInfo *processInfo = [NSClassFromString(@"NSProcessInfo") processInfo];
-		NSArray *args = processInfo.arguments;
-		NSUInteger count = args.count;
-		if (count != 0) {
-			NSString *executablePath = args[0];
-			if (executablePath) {
-				BOOL isExtensionOrApp = [executablePath rangeOfString:@"/Application"].location != NSNotFound;
-				if (isExtensionOrApp) {
-					NSString *bundleId = [[NSBundle mainBundle] bundleIdentifier];
-					int notify_token;
-					notify_register_dispatch([[bundleId stringByAppendingString:@".replaykit_receiver"] cStringUsingEncoding:NSUTF8StringEncoding],
-						&notify_token,
-						dispatch_get_main_queue(),^(int token) {
-							[ReplayKitEverywhere startOrStopRec];	
-						}
-					);
-					NSLog(@"[ReplayKit Everywhere] Started record listener for app %@", bundleId);
-				}
-			}
-		}
-		} @catch (NSException *exception) {
-        NSLog(@"[ReplayKit Everywhere] Not compatible with app %@", classString);
+								} else {
+									
+									NSProcessInfo *processInfo = [NSClassFromString(@"NSProcessInfo") processInfo];
+									NSArray *args = processInfo.arguments;
+									NSUInteger count = args.count;
+									if (count != 0) {
+										NSString *executablePath = args[0];
+										BOOL isExtensionOrApp = [executablePath rangeOfString:@"/Application"].location != NSNotFound;
+										if (isExtensionOrApp) {
+											NSString *bundleId = [[NSBundle mainBundle] bundleIdentifier];
+											int notify_token;
+											notify_register_dispatch([[bundleId stringByAppendingString:@".replaykit_receiver"] cStringUsingEncoding:NSUTF8StringEncoding],
+												&notify_token,
+												dispatch_get_main_queue(),^(int token) {
+													[ReplayKitEverywhere startOrStopRec];	
+												}
+											);
+											NSLog(@"[ReplayKit Everywhere] Started record listener for app %@", bundleId);
+											[[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidEnterBackgroundNotification object:nil queue:[NSOperationQueue mainQueue]
+		  									usingBlock:^(NSNotification *notification) {
+													if (RPScreenRecorder.sharedRecorder.recording){
+														[ReplayKitEverywhere stopRec];
+													}
+												}
+											];
+										}
+									}
+
+								}
+							} @catch (NSException *exception) {
+        				NSLog(@"[ReplayKit Everywhere] Not compatible with app %@", bundleId);
+							}
+          }
+      ];
     }
-	}
-
- %orig;
 }
-
-%end
 
 %hook RPPreviewViewController 
 - (BOOL)shouldAutorotate
@@ -139,3 +170,161 @@ void showBulletinListener(CFMachPortRef port, LMMessage *message, CFIndex size, 
     return [[UIApplication sharedApplication].keyWindow.rootViewController supportedInterfaceOrientations];
 }
 %end
+
+
+// ReplayKitEverywhere.mm
+
+
+LMConnection connection = {
+    MACH_PORT_NULL,
+    "com.estertion.replaykiteverywhere.lmserver"
+};
+
+NSString* RKEGetSettingValue(NSString *key, NSString *defaultValue) {
+  NSDictionary *setting = [NSDictionary dictionaryWithContentsOfFile: @"/var/mobile/Library/Preferences/com.estertion.replaykiteverywhere.plist"];
+  if (setting == NULL) return defaultValue;
+  NSObject *value = [setting objectForKey:key];
+  if (value == NULL) return defaultValue;
+
+  NSString *valueStr;
+  if ([value isKindOfClass:[NSString class]]) {
+      valueStr = (NSString *)value;
+  } else if ([value isKindOfClass:[NSNumber class]]) {
+      valueStr = [(NSNumber *)value stringValue];
+  } else {
+      valueStr = defaultValue;
+  }
+  return valueStr;
+}
+
+static RPPreviewViewController *previewControllerShare = NULL;
+
+@implementation ReplayKitEverywhere
+
++(void)warnWithError:(NSError *)error {
+    NSString *errorMessage;
+    switch([error code]) {
+        case RPRecordingErrorUserDeclined:
+            errorMessage = @"You've cancelled recording";
+            break;
+        case RPRecordingErrorDisabled:
+            errorMessage = @"Recording disabled via parental controls";
+            break;
+        case RPRecordingErrorFailedToStart:
+            errorMessage = @"Failed to start recording";
+            break;
+        case RPRecordingErrorFailed:
+        case RPRecordingErrorUnknown:
+            errorMessage = @"Unknown error occurred";
+            break;
+        case RPRecordingErrorInsufficientStorage:
+            errorMessage = @"There's not enough storage available on the device for saving the recording";
+            break;
+        case RPRecordingErrorContentResize:
+            errorMessage = @"Recording interrupted by multitasking and content resizing";
+            break;
+        default:
+            errorMessage = [error localizedDescription];
+    }
+    [self showBulletin:errorMessage];
+}
+
++(void)showBulletin:(NSString *)message {
+    //send message
+    NSData *msg = [message dataUsingEncoding:NSUTF8StringEncoding];
+    SInt32 messageId = 0x1111; // this is arbitrary i think
+    LMConnectionSendOneWayData(&connection, messageId, (CFDataRef)msg);
+}
+
++(void)startRec{
+    
+    RPScreenRecorder* recorder = RPScreenRecorder.sharedRecorder;
+    
+    @try {
+        NSString *microphoneEnabledStr = RKEGetSettingValue(@"microphoneEnabled", @"1");
+        NSLog(@"[ReplayKit Everywhere] Retrived setting microphoneEnabled %@", microphoneEnabledStr);
+        BOOL microphoneEnabled = [microphoneEnabledStr isEqualToString:@"1"];
+    if ([recorder respondsToSelector:@selector(startRecordingWithHandler:)]){
+        //iOS 10+
+        recorder.microphoneEnabled = microphoneEnabled;
+        [recorder startRecordingWithHandler:^(NSError * error) {
+            if(error != nil) {
+                [ReplayKitEverywhere warnWithError:error];
+                return;
+            } else {
+                notify_post("com.estertion.replaykiteverywhere.record_started");
+                [ReplayKitEverywhere showBulletin:@"Record started"];
+            }
+        }];
+    } else {
+        //iOS 9
+        [recorder startRecordingWithMicrophoneEnabled:microphoneEnabled handler:^(NSError * error) {
+            if(error != nil) {
+                [ReplayKitEverywhere warnWithError:error];
+                return;
+            } else {
+                notify_post("com.estertion.replaykiteverywhere.record_started");
+                [ReplayKitEverywhere showBulletin:@"Record started"];
+            }
+        }];
+    }
+
+    } @catch (NSException *exception) {
+        [ReplayKitEverywhere showBulletin:@"ReplayKit is not compatible with this app"];
+    }
+    
+}
+
++(void)stopRec{
+    notify_post("com.estertion.replaykiteverywhere.record_stopped");
+    [[RPScreenRecorder sharedRecorder] stopRecordingWithHandler:^(RPPreviewViewController * _Nullable previewViewController, NSError * _Nullable error){
+        if(error){
+            [ReplayKitEverywhere warnWithError:error];
+            return;
+        }else if(previewViewController != nil){
+            
+            previewViewController.previewControllerDelegate = self;
+            previewControllerShare = previewViewController;
+            
+            UIViewController *rootController = [UIApplication sharedApplication].keyWindow.rootViewController;
+            [rootController presentViewController:previewViewController animated:YES completion:nil];
+            
+        }
+        
+    }];
+    
+}
+
++(void)startOrStopRec{
+    RPScreenRecorder* recorder = RPScreenRecorder.sharedRecorder;
+    if (!recorder.available) {
+        UIAlertController* alert = [UIAlertController alertControllerWithTitle:@"ReplayKit Everywhere"
+                                                                       message:[[NSBundle bundleWithPath:@"/Library/PreferenceBundles/ReplayKitEverywherePrefs.bundle"] localizedStringForKey:@"RKE_NOT_AVAILABLE" value:@"ReplayKit is not available and cannot start the recording.\nAre you mirroring through Airplay? Or is another app using ReplayKit right now?" table:nil]
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        UIAlertAction* defaultAction = [UIAlertAction actionWithTitle:[[NSBundle bundleWithIdentifier:@"com.apple.UIKit"] localizedStringForKey:@"Dismiss" value:@"" table:nil]
+
+ style:UIAlertActionStyleDefault
+                                                              handler:^(UIAlertAction * action) {}];
+        
+        [alert addAction:defaultAction];
+        [[UIApplication sharedApplication].keyWindow.rootViewController presentViewController:alert animated:YES completion:nil];
+        return;
+    }
+    if (recorder.recording) {
+        [self stopRec];
+    } else {
+        [self startRec];
+    }
+}
+
++(void)previewControllerDidFinish:(RPPreviewViewController *)previewController {
+    if (previewControllerShare != NULL) {
+        [previewControllerShare dismissViewControllerAnimated:YES completion:nil];
+        previewControllerShare = NULL;
+    }
+}
+
++(void)previewController:(RPPreviewViewController *)previewController didFinishWithActivityTypes:(NSSet <NSString *>*)activityTypes {
+}
+
+@end

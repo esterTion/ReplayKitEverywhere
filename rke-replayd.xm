@@ -77,3 +77,14 @@ static NSDictionary *audioSampleRate = @{
 }
 
 %end
+
+%hook RPRecordingManager
+-(bool)isExemptFromAcknowledgementAlert {
+  NSString *skipWarn = RKEGetSettingValue(@"skipWarn", @"0");
+  if ([skipWarn isEqualToString:@"0"]) {
+    return %orig;
+  } else {
+    return true;
+  }
+}
+%end
