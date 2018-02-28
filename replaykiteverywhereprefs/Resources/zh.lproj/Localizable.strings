@@ -14,4 +14,7 @@
   "Delete all temporary files?" = "删除所有临时文件？";
   "This action cannot be reverted" = "这个操作不可撤销";
   "Files deleted" = "文件已删除";
+  "Failed to save record, file RPMovie_%@.m4v not found" = "保存录像失败，文件 RPMovie_%@.m4v 不存在";
+  "Saving record to camera roll" = "正在保存录像至相册";
+  "Record saved! " = "录像已保存！";
 }

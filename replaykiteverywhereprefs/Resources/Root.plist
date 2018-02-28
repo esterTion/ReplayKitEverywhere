@@ -28,6 +28,13 @@
 			key = "microphoneEnabled";
 		},
 		{
+			cell = "PSSwitchCell";
+			label = "Automatic save record to camera roll";
+			defaults = "com.estertion.replaykiteverywhere";
+			default = "0";
+			key = "autosave";
+		},
+		{
 			cell = "PSGroupCell";
 			label = "ReplayKit Settings";
 			footerText = QUALITY_FOOT;

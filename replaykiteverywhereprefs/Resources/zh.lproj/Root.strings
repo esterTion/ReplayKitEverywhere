@@ -13,6 +13,7 @@
   "Focus on quality" = "注重质量";
   "Xtreme detailed" = "极致细节";
   "Enable microphone commentary" = "启用麦克风录制";
+  "Automatic save record to camera roll" = "自动保存至相册";
   "Skip permission granting" = "跳过权限确认";
   ENABLE_MICROPHONE_FOOT = "插件全局开关。原生支持的游戏不会被影响。\n开启后依然会在录屏前询问是否需要麦克风。\n程序产生的声音始终会被录制（部分程序播放声音的方式不兼容录制）。\n\n如果为iPhone7以前的设备，且录制时未连接耳机，录制音频将被居中为单声道，因为这些设备只有单扬声器";
   "Temporary files info" = "临时文件信息";
