@@ -18,6 +18,24 @@
 		},
 		{
 			cell = "PSGroupCell";
+			label = "Touch indicator";
+		},
+		{
+			cell = "PSSwitchCell";
+			label = "Enable";
+			defaults = "com.estertion.replaykiteverywhere";
+			default = "1";
+			key = "indicator";
+		},
+		{
+			cell = "PSSwitchCell";
+			label = "Always visible";
+			defaults = "com.estertion.replaykiteverywhere";
+			default = "0";
+			key = "indicator_always";
+		},
+		{
+			cell = "PSGroupCell";
 			footerText = ENABLE_MICROPHONE_FOOT;
 		},
 		{
@@ -58,13 +76,15 @@
 				0,
 				1,
 				2,
-				3
+				3,
+				4
 			);
 			validTitles = (
 				"Space saver",
 				"Balanced size",
 				"Focus on quality",
-				"Xtreme detailed"
+				"Xtreme detailed",
+				"Xtreme detailed (for iPad)"
 			);
 		},
 		{

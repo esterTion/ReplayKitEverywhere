@@ -31,7 +31,7 @@ NSString* RKEGetSettingValue(NSString *key, NSString *defaultValue) {
     inFormat->mBytesPerFrame = 4;
     inFormat->mChannelsPerFrame = 2;
     NSString *quality = RKEGetSettingValue(@"quality", @"0");
-    if ([quality isEqualToString:@"2"] || [quality isEqualToString:@"3"]) {
+    if ([quality isEqualToString:@"2"] || [quality isEqualToString:@"3"] || [quality isEqualToString:@"4"]) {
       inFormat->mSampleRate = 48000.0;
     }
 
@@ -41,17 +41,20 @@ NSString* RKEGetSettingValue(NSString *key, NSString *defaultValue) {
 static NSDictionary *videoBitrate = @{
   @"1": @4000000LL,
   @"2": @8000000LL,
-  @"3": @15000000LL
+  @"3": @15000000LL,
+  @"4": @25000000LL
 };
 static NSDictionary *audioBitrate = @{
   @"1": @128000LL,
   @"2": @256000LL,
-  @"3": @320000LL
+  @"3": @320000LL,
+  @"4": @320000LL
 };
 static NSDictionary *audioSampleRate = @{
   @"1": @44100.0,
   @"2": @48000.0,
-  @"3": @48000.0
+  @"3": @48000.0,
+  @"4": @48000.0
 };
 
 %hook AVAssetWriterInput
@@ -87,4 +90,7 @@ static NSDictionary *audioSampleRate = @{
     return true;
   }
 }
+/*-(bool)isApplicationInForegroundWithBundleIdentifier:(NSString*) id {
+  return true;
+}*/
 %end

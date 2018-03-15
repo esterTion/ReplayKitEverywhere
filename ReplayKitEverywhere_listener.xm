@@ -110,6 +110,7 @@ static NSString* recordingApp = NULL;
 
 static id observer;
 static id RKEListenerInstance = NULL;
+static BOOL inApp = false;
 %ctor
 {
 	@autoreleasepool
@@ -190,6 +191,7 @@ static id RKEListenerInstance = NULL;
 										}
 									}
 								];
+								inApp = true;
 							}
 						}
 
@@ -377,3 +379,90 @@ static RPPreviewViewController *previewControllerShare = NULL;
 }
 
 @end
+
+static NSMutableArray* touches = [[NSMutableArray alloc] init];
+int findTouch(double x, double y) {
+	for (int i=0; i<touches.count; i++) {
+		CGPoint touch;
+		[touches[i][@"point"] getValue:&touch];
+		if (touch.x == x && touch.y == y) return i;
+	}
+	return -1;
+}
+%hook UIApplication
+
+-(void) sendEvent:(UIEvent*)event {
+	%orig;
+	if (!inApp) return;
+	if ([RKEGetSettingValue(@"indicator", @"1") isEqualToString:@"0"]) return;
+	if ([RKEGetSettingValue(@"indicator_always", @"0") isEqualToString:@"0"] && !RPScreenRecorder.sharedRecorder.recording) return;
+	if ([event type] == UIEventTypeTouches) {
+		int touchBegan = 0;
+		int touchMoved = 0;
+		int touchEnded = 0;
+		for (UITouch* touch in event.allTouches) {
+			UIView *keyWindow = [UIApplication sharedApplication].keyWindow;
+			CGPoint point = [touch locationInView:keyWindow];
+			CGPoint prevPoint = [touch previousLocationInView:keyWindow];
+			int foundTouchIndex;
+			UIView* touchIndicator;
+			switch ([touch phase]) {
+				case UITouchPhaseBegan:
+					touchIndicator = [[UIView alloc] initWithFrame:CGRectMake(point.x - 10, point.y - 10, 20, 20)];
+					touchIndicator.userInteractionEnabled = NO;
+					touchIndicator.alpha = 0.5;
+					touchIndicator.layer.cornerRadius = 10;
+					touchIndicator.backgroundColor = [UIColor whiteColor];
+					touchIndicator.layer.borderColor = [UIColor blackColor].CGColor;
+					touchIndicator.layer.borderWidth = 1.0f;
+					[keyWindow addSubview:touchIndicator];
+					[touches addObject: @{@"point":[NSValue valueWithCGPoint:point], @"indicator": touchIndicator}];
+					touchBegan++;
+					break;
+				case UITouchPhaseMoved:
+					foundTouchIndex = findTouch(prevPoint.x, prevPoint.y);
+					if (foundTouchIndex != -1) {
+						touchIndicator = touches[foundTouchIndex][@"indicator"];
+						[touches replaceObjectAtIndex:foundTouchIndex withObject:@{@"point":[NSValue valueWithCGPoint:point], @"indicator": touchIndicator}];
+						touchIndicator.frame = CGRectMake(point.x - 10, point.y - 10, 20, 20);
+					}
+					touchMoved++;
+					break;
+				case UITouchPhaseEnded:
+				case UITouchPhaseCancelled:
+					foundTouchIndex = findTouch(prevPoint.x, prevPoint.y);
+					if (foundTouchIndex != -1) {
+						touchIndicator = touches[foundTouchIndex][@"indicator"];
+						[touchIndicator removeFromSuperview];
+						[touches removeObjectAtIndex:foundTouchIndex];
+						[touchIndicator release];
+					} else {
+						foundTouchIndex = findTouch(point.x, point.y);
+						if (foundTouchIndex != -1) {
+							touchIndicator = touches[foundTouchIndex][@"indicator"];
+							[touchIndicator removeFromSuperview];
+							[touches removeObjectAtIndex:foundTouchIndex];
+							[touchIndicator release];
+						} else {
+							NSLog(@"[ReplayKit Everywhere] touch [%g,%g] not found to remove", point.x, point.y);
+						}
+					}
+
+					//clear point not removed
+					if (event.allTouches.count == 1 && touches.count > 0) {
+						for (int i=0; i<touches.count; i++) {
+							touchIndicator = touches[i][@"indicator"];
+							[touchIndicator removeFromSuperview];
+							[touches removeObjectAtIndex:i];
+							[touchIndicator release];
+						}
+					}
+					touchEnded++;
+					break;
+			}
+		}
+		NSLog(@"[ReplayKit Everywhere] touches: %@ %@ %d began, %d moved, %d ended", touches, event.allTouches, touchBegan, touchMoved, touchEnded);
+	}
+}
+
+%end

@@ -3,10 +3,10 @@ include $(THEOS)/makefiles/common.mk
 #DEBUG = 0
 #GO_EASY_ON_ME = 1
 ARCHS = arm64
-TARGET = iphone::10.1:9.0
+TARGET = iphone::10.3:9.0
 TWEAK_NAME = ReplayKitEverywhere rke-replayd
-SDKVERSION = 10.1
-SYSROOT = $(THEOS)/sdks/iPhoneOS10.1.sdk
+SDKVERSION = 10.3
+SYSROOT = $(THEOS)/sdks/iPhoneOS10.3.sdk
 ReplayKitEverywhere_FILES = ReplayKitEverywhere_listener.xm
 ReplayKitEverywhere_LIBRARIES = activator rocketbootstrap
 ReplayKitEverywhere_FRAMEWORKS = ReplayKit
