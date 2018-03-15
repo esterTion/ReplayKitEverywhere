@@ -53,6 +53,13 @@
 			key = "autosave";
 		},
 		{
+			cell = "PSSwitchCell";
+			label = "Fix for \"Failed to start record\"";
+			defaults = "com.estertion.replaykiteverywhere";
+			default = "0";
+			key = "fix_foreground";
+		},
+		{
 			cell = "PSGroupCell";
 			label = "ReplayKit Settings";
 			footerText = QUALITY_FOOT;

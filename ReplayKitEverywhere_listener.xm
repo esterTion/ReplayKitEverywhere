@@ -410,7 +410,7 @@ int findTouch(double x, double y) {
 				case UITouchPhaseBegan:
 					touchIndicator = [[UIView alloc] initWithFrame:CGRectMake(point.x - 10, point.y - 10, 20, 20)];
 					touchIndicator.userInteractionEnabled = NO;
-					touchIndicator.alpha = 0.5;
+					touchIndicator.alpha = 0.7;
 					touchIndicator.layer.cornerRadius = 10;
 					touchIndicator.backgroundColor = [UIColor whiteColor];
 					touchIndicator.layer.borderColor = [UIColor blackColor].CGColor;

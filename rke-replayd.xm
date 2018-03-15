@@ -90,7 +90,10 @@ static NSDictionary *audioSampleRate = @{
     return true;
   }
 }
-/*-(bool)isApplicationInForegroundWithBundleIdentifier:(NSString*) id {
-  return true;
-}*/
+-(bool)isApplicationInForegroundWithBundleIdentifier:(NSString*) id {
+  if ([RKEGetSettingValue(@"fix_foreground", @"0") isEqualToString:@"1"])
+    return true;
+  else
+    return %orig;
+}
 %end
