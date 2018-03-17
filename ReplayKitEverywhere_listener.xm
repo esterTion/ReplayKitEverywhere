@@ -389,6 +389,10 @@ int findTouch(double x, double y) {
 	}
 	return -1;
 }
+static NSMutableArray* pendingRemove = [[NSMutableArray alloc] init];
+static int remainingTouch = 0;
+static int fadeStartCount = 0;
+static int fadeEndCount = 0;
 %hook UIApplication
 
 -(void) sendEvent:(UIEvent*)event {
@@ -397,15 +401,12 @@ int findTouch(double x, double y) {
 	if ([RKEGetSettingValue(@"indicator", @"1") isEqualToString:@"0"]) return;
 	if ([RKEGetSettingValue(@"indicator_always", @"0") isEqualToString:@"0"] && !RPScreenRecorder.sharedRecorder.recording) return;
 	if ([event type] == UIEventTypeTouches) {
-		int touchBegan = 0;
-		int touchMoved = 0;
-		int touchEnded = 0;
 		for (UITouch* touch in event.allTouches) {
 			UIView *keyWindow = [UIApplication sharedApplication].keyWindow;
 			CGPoint point = [touch locationInView:keyWindow];
 			CGPoint prevPoint = [touch previousLocationInView:keyWindow];
 			int foundTouchIndex;
-			UIView* touchIndicator;
+			UIView* touchIndicator = NULL;
 			switch ([touch phase]) {
 				case UITouchPhaseBegan:
 					touchIndicator = [[UIView alloc] initWithFrame:CGRectMake(point.x - 10, point.y - 10, 20, 20)];
@@ -417,7 +418,7 @@ int findTouch(double x, double y) {
 					touchIndicator.layer.borderWidth = 1.0f;
 					[keyWindow addSubview:touchIndicator];
 					[touches addObject: @{@"point":[NSValue valueWithCGPoint:point], @"indicator": touchIndicator}];
-					touchBegan++;
+					remainingTouch++;
 					break;
 				case UITouchPhaseMoved:
 					foundTouchIndex = findTouch(prevPoint.x, prevPoint.y);
@@ -426,30 +427,63 @@ int findTouch(double x, double y) {
 						[touches replaceObjectAtIndex:foundTouchIndex withObject:@{@"point":[NSValue valueWithCGPoint:point], @"indicator": touchIndicator}];
 						touchIndicator.frame = CGRectMake(point.x - 10, point.y - 10, 20, 20);
 					}
-					touchMoved++;
 					break;
 				case UITouchPhaseEnded:
 				case UITouchPhaseCancelled:
 					foundTouchIndex = findTouch(prevPoint.x, prevPoint.y);
 					if (foundTouchIndex != -1) {
 						touchIndicator = touches[foundTouchIndex][@"indicator"];
-						[touchIndicator removeFromSuperview];
+						/*[touchIndicator removeFromSuperview];
 						[touches removeObjectAtIndex:foundTouchIndex];
-						[touchIndicator release];
+						[touchIndicator release];*/
 					} else {
 						foundTouchIndex = findTouch(point.x, point.y);
 						if (foundTouchIndex != -1) {
 							touchIndicator = touches[foundTouchIndex][@"indicator"];
-							[touchIndicator removeFromSuperview];
-							[touches removeObjectAtIndex:foundTouchIndex];
-							[touchIndicator release];
 						} else {
 							NSLog(@"[ReplayKit Everywhere] touch [%g,%g] not found to remove", point.x, point.y);
 						}
 					}
+					remainingTouch--;
+
+					//found touch, add to remove queue & remove from touches array
+					if (touchIndicator != NULL) {
+						[pendingRemove addObject:@{
+							@"animated": @NO,
+							@"view": touchIndicator
+						}];
+						[touches removeObjectAtIndex:foundTouchIndex];
+						[UIView animateWithDuration:0.2 animations:^() {
+							for (int i=0; i<pendingRemove.count; i++) {
+								NSNumber *animated = pendingRemove[i][@"animated"];
+								if ([animated boolValue] == NO) {
+									UIView *touchIndicator = pendingRemove[i][@"view"];
+									pendingRemove[i] = @{
+										@"animated": @YES,
+										@"view": touchIndicator
+									};
+									touchIndicator.alpha = 0.0;
+									fadeStartCount++;
+								}
+							}
+						} completion:^(BOOL finished) {
+							fadeEndCount++;
+							if (fadeStartCount <= fadeEndCount) {
+								for (int i=0; i<touches.count; i++) {
+									UIView *touchIndicator = pendingRemove[i][@"indicator"];
+									[touchIndicator removeFromSuperview];
+									[touchIndicator release];
+								}
+								[pendingRemove removeObjectsInRange:NSMakeRange(0, pendingRemove.count)];
+								fadeStartCount = 0;
+								fadeEndCount = 0;
+							}
+						}];
+					}
 
 					//clear point not removed
-					if (event.allTouches.count == 1 && touches.count > 0) {
+					if (remainingTouch == 0 && touches.count > 0) {
+						NSLog(@"[ReplayKit Everywhere] cleaning remaining touch");
 						for (int i=0; i<touches.count; i++) {
 							touchIndicator = touches[i][@"indicator"];
 							[touchIndicator removeFromSuperview];
@@ -457,11 +491,9 @@ int findTouch(double x, double y) {
 							[touchIndicator release];
 						}
 					}
-					touchEnded++;
 					break;
 			}
 		}
-		NSLog(@"[ReplayKit Everywhere] touches: %@ %@ %d began, %d moved, %d ended", touches, event.allTouches, touchBegan, touchMoved, touchEnded);
 	}
 }
 
