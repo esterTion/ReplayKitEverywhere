@@ -32,6 +32,9 @@
 
 @end
 
+@interface RKE_RPScreenRecorder : NSObject
+-stopRecordingWithVideoURLHandler:(id)block;
+@end
 
 static NSBundle *tweakBundle = NULL;
 
@@ -41,10 +44,7 @@ void showBulletin(NSString *message) {
 	bulletin.title = @"ReplayKit Everywhere";
 	bulletin.message = message;
 	SBBulletinBannerController *controller = [%c(SBBulletinBannerController) sharedInstance];
-	if ([controller respondsToSelector:@selector(observer:addBulletin:forFeed:playLightsAndSirens:withReply:)])
-		[controller observer:nil addBulletin:bulletin forFeed:2 playLightsAndSirens:YES withReply:nil];
-	else if ([controller respondsToSelector:@selector(observer:addBulletin:forFeed:)])
-		[controller observer:nil addBulletin:bulletin forFeed:2];
+	[controller observer:nil addBulletin:bulletin forFeed:2 playLightsAndSirens:YES withReply:nil];
 	[bulletin release];
 }
 
@@ -66,9 +66,29 @@ void showBulletinListener(CFMachPortRef port, LMMessage *message, CFIndex size, 
 	// Make it into a CFDataRef object
 	CFDataRef cfdata = CFDataCreateWithBytesNoCopy(kCFAllocatorDefault, (const UInt8 *)data ?: (const UInt8 *)&data, length, kCFAllocatorNull);
 
-	NSString *msg = [[NSString alloc] initWithData:(NSData*)cfdata encoding:NSUTF8StringEncoding];;
-	showBulletin([tweakBundle localizedStringForKey:msg value:@"" table:nil]);
-
+@try{
+	NSError* error;
+	NSDictionary *msg = [NSJSONSerialization JSONObjectWithData:(NSData*)cfdata options:kNilOptions error:&error];
+	if ([msg[@"cmd"] isEqualToString:@"bulletin"]) {
+		showBulletin([tweakBundle localizedStringForKey:msg[@"value"] value:@"" table:nil]);
+	} else if ([msg[@"cmd"] isEqualToString:@"save_record"]) {
+		NSFileManager *fm = [NSFileManager defaultManager];
+		NSString *path = msg[@"value"];
+		if ([fm fileExistsAtPath:path]) {
+			showBulletin([tweakBundle localizedStringForKey:@"Saving record to camera roll" value:@"" table:nil]);
+			[[PLAssetsSaver sharedAssetsSaver] saveVideoAtPath:path properties:nil completionBlock:^(NSURL *url) {
+				if (url) {
+					showBulletin([tweakBundle localizedStringForKey:@"Record saved! " value:@"" table:nil]);
+					[[NSFileManager defaultManager] removeItemAtPath:path error:nil];
+				}
+			}];
+		} else {
+			showBulletin([NSString stringWithFormat:[tweakBundle localizedStringForKey:@"Failed to save record, file %@ not found" value:@"" table:nil], path]);
+		}
+	} else {
+		NSLog(@"[ReplayKit Everywhere] Unknown cmd received: %@", msg[@"cmd"]);
+	}
+}@catch(NSException *e) {}
 	// Free the CFDataRef object
 	if (cfdata) {
 		CFRelease(cfdata);
@@ -79,13 +99,11 @@ void showBulletinListener(CFMachPortRef port, LMMessage *message, CFIndex size, 
 @end
 
 static BOOL recording = false;
-static NSString* recordingApp = NULL;
 @implementation RKEverywhereListener
 
 - (void)activator:(LAActivator *)activator receiveEvent:(LAEvent *)event {
 	SpringBoard *springBoard = (SpringBoard*) [objc_getClass("SpringBoard") sharedApplication];
 	SBApplication *front = (SBApplication*) [springBoard _accessibilityFrontMostApplication];
-	recordingApp = front.bundleIdentifier;
 	notify_post([[front.bundleIdentifier stringByAppendingString:@".replaykit_receiver"] cStringUsingEncoding:NSUTF8StringEncoding]);
 }
 
@@ -145,24 +163,6 @@ static BOOL inApp = false;
 								[RKEListenerInstance release];
 								RKEListenerInstance = [RKEverywhereListener new];
 								[LASharedActivator registerListener:RKEListenerInstance forName:@"com.estertion.replaykiteverywhere"];
-							}
-						);
-						notify_register_dispatch("com.estertion.replaykiteverywhere.save_record",
-							&notify_token,
-							dispatch_get_main_queue(),^(int token) {
-								NSFileManager *fm = [NSFileManager defaultManager];
-								NSString *path = [NSString stringWithFormat:@"/var/mobile/Library/ReplayKit/RPMovie_%@.m4v", recordingApp];
-								if ([fm fileExistsAtPath:path]) {
-									showBulletin([tweakBundle localizedStringForKey:@"Saving record to camera roll" value:@"" table:nil]);
-									[[PLAssetsSaver sharedAssetsSaver] saveVideoAtPath:path properties:nil completionBlock:^(NSURL *url) {
-										if (url) {
-											showBulletin([tweakBundle localizedStringForKey:@"Record saved! " value:@"" table:nil]);
-											[[NSFileManager defaultManager] removeItemAtPath:[NSString stringWithFormat:@"/var/mobile/Library/ReplayKit/RPMovie_%@.m4v", recordingApp] error:nil];
-										}
-									}];
-								} else {
-									showBulletin([NSString stringWithFormat:[tweakBundle localizedStringForKey:@"Failed to save record, file RPMovie_%@.m4v not found" value:@"" table:nil], recordingApp]);
-								}
 							}
 						);
 
@@ -272,9 +272,17 @@ static RPPreviewViewController *previewControllerShare = NULL;
 	[self showBulletin:errorMessage];
 }
 
-+(void)showBulletin:(NSString *)message {
++(void)showBulletin:(NSString*)msg {
+	[self sendDataToSB:msg cmd:@"bulletin"];
+}
++(void)sendDataToSB:(NSString *)value cmd:(NSString *)cmd {
 	//send message
-	NSData *msg = [message dataUsingEncoding:NSUTF8StringEncoding];
+	NSDictionary *dict = @{
+		@"cmd": cmd,
+		@"value": value
+	};
+	NSError *error;
+	NSData *msg = [NSJSONSerialization dataWithJSONObject:dict options:kNilOptions error:&error];
 	SInt32 messageId = 0x1111; // this is arbitrary i think
 	LMConnectionSendOneWayData(&connection, messageId, (CFDataRef)msg);
 }
@@ -325,25 +333,28 @@ static RPPreviewViewController *previewControllerShare = NULL;
 
 +(void)stopRec{
 	notify_post("com.estertion.replaykiteverywhere.record_stopped");
-	[[RPScreenRecorder sharedRecorder] stopRecordingWithHandler:^(RPPreviewViewController * _Nullable previewViewController, NSError * _Nullable error){
-		if(error){
-			[ReplayKitEverywhere warnWithError:error];
-			return;
-		}else if(previewViewController != nil){
-			
-			if ([RKEGetSettingValue(@"autosave", @"0") isEqualToString:@"1"]) {
-				notify_post("com.estertion.replaykiteverywhere.save_record");
+	if ([RKEGetSettingValue(@"autosave", @"0") isEqualToString:@"1"]) {
+		[(RKE_RPScreenRecorder*)[RPScreenRecorder sharedRecorder] stopRecordingWithVideoURLHandler:^(NSURL* url) {
+			NSString *path = [[url standardizedURL] path];
+			[self sendDataToSB:path cmd:@"save_record"];
+		}];
+	} else {
+		[[RPScreenRecorder sharedRecorder] stopRecordingWithHandler:^(RPPreviewViewController * _Nullable previewViewController, NSError * _Nullable error){
+			if(error){
+				[ReplayKitEverywhere warnWithError:error];
 				return;
+			}else if(previewViewController != nil){
+				
+				previewViewController.previewControllerDelegate = self;
+				previewControllerShare = previewViewController;
+				
+				UIViewController *rootController = [UIApplication sharedApplication].keyWindow.rootViewController;
+				[rootController presentViewController:previewViewController animated:YES completion:nil];
+				
 			}
-			previewViewController.previewControllerDelegate = self;
-			previewControllerShare = previewViewController;
 			
-			UIViewController *rootController = [UIApplication sharedApplication].keyWindow.rootViewController;
-			[rootController presentViewController:previewViewController animated:YES completion:nil];
-			
-		}
-		
-	}];
+		}];
+	}
 	
 }
 
@@ -433,9 +444,6 @@ static int fadeEndCount = 0;
 					foundTouchIndex = findTouch(prevPoint.x, prevPoint.y);
 					if (foundTouchIndex != -1) {
 						touchIndicator = touches[foundTouchIndex][@"indicator"];
-						/*[touchIndicator removeFromSuperview];
-						[touches removeObjectAtIndex:foundTouchIndex];
-						[touchIndicator release];*/
 					} else {
 						foundTouchIndex = findTouch(point.x, point.y);
 						if (foundTouchIndex != -1) {
@@ -469,14 +477,19 @@ static int fadeEndCount = 0;
 						} completion:^(BOOL finished) {
 							fadeEndCount++;
 							if (fadeStartCount <= fadeEndCount) {
-								for (int i=0; i<touches.count; i++) {
-									UIView *touchIndicator = pendingRemove[i][@"indicator"];
-									[touchIndicator removeFromSuperview];
-									[touchIndicator release];
+								@try{
+									for (int i=0; i<touches.count; i++) {
+										UIView *touchIndicator = pendingRemove[i][@"indicator"];
+										[touchIndicator removeFromSuperview];
+										[touchIndicator release];
+									}
+									[pendingRemove removeObjectsInRange:NSMakeRange(0, pendingRemove.count)];
+									fadeStartCount = 0;
+									fadeEndCount = 0;
+								}@catch(NSException *e) {
+									//What the fuck no exception caught but crashing without catch???
+									showBulletin([NSString stringWithFormat:@"Exception: %@", [e reason]]);
 								}
-								[pendingRemove removeObjectsInRange:NSMakeRange(0, pendingRemove.count)];
-								fadeStartCount = 0;
-								fadeEndCount = 0;
 							}
 						}];
 					}
@@ -487,9 +500,9 @@ static int fadeEndCount = 0;
 						for (int i=0; i<touches.count; i++) {
 							touchIndicator = touches[i][@"indicator"];
 							[touchIndicator removeFromSuperview];
-							[touches removeObjectAtIndex:i];
 							[touchIndicator release];
 						}
+						[touches removeObjectsInRange:NSMakeRange(0, touches.count)];
 					}
 					break;
 			}

@@ -1,6 +1,8 @@
 ## ReplayKit Everywhere  
 > Enable screen recording for every app, and activate through Activator  
 
+Test package repo: https://repo.estertion.win/ ([Cydia quick add link](cydia://url/https://cydia.saurik.com/api/share#?source=https://repo.estertion.win/))
+
 Support iOS 9 & 10  
 
 Released on [BigBoss](http://cydia.saurik.com/package/com.estertion.replaykiteverywhere/)  
