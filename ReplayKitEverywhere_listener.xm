@@ -126,6 +126,10 @@ static BOOL recording = false;
 
 @end
 
+UIWindow* customWindowMethod(id self, SEL _cmd) {
+	return [UIApplication sharedApplication].keyWindow;
+}
+
 static id observer;
 static id RKEListenerInstance = NULL;
 static BOOL inApp = false;
@@ -192,6 +196,16 @@ static BOOL inApp = false;
 									}
 								];
 								inApp = true;
+
+								//Check and set window selector method
+								if (![[[UIApplication sharedApplication] delegate] respondsToSelector:@selector(window)]) {
+									class_addMethod(
+										[[[UIApplication sharedApplication] delegate] class],
+										@selector(window),
+										(IMP) customWindowMethod,
+										"@@:"
+									);
+								}
 							}
 						}
 
