@@ -133,6 +133,12 @@ UIWindow* customWindowMethod(id self, SEL _cmd) {
 static id observer;
 static id RKEListenerInstance = NULL;
 static BOOL inApp = false;
+static NSDictionary *setting = [[NSMutableDictionary alloc] initWithContentsOfFile: @"/var/mobile/Library/Preferences/com.estertion.replaykiteverywhere.plist"];
+void reloadSetting() {
+	[setting release];
+	setting = [[NSMutableDictionary alloc] initWithContentsOfFile: @"/var/mobile/Library/Preferences/com.estertion.replaykiteverywhere.plist"];
+	NSLog(@"[ReplayKit Everywhere] Reloaded settings");
+}
 %ctor
 {
 	@autoreleasepool
@@ -195,6 +201,11 @@ static BOOL inApp = false;
 										}
 									}
 								];
+								[[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:[NSOperationQueue mainQueue]
+									usingBlock:^(NSNotification *notification) {
+										reloadSetting();
+									}
+								];
 								inApp = true;
 
 								//Check and set window selector method
@@ -238,7 +249,6 @@ LMConnection connection = {
 };
 
 NSString* RKEGetSettingValue(NSString *key, NSString *defaultValue) {
-	NSDictionary *setting = [NSDictionary dictionaryWithContentsOfFile: @"/var/mobile/Library/Preferences/com.estertion.replaykiteverywhere.plist"];
 	if (setting == NULL) return defaultValue;
 	NSObject *value = [setting objectForKey:key];
 	if (value == NULL) return defaultValue;
@@ -491,7 +501,7 @@ static int fadeEndCount = 0;
 						} completion:^(BOOL finished) {
 							fadeEndCount++;
 							if (fadeStartCount <= fadeEndCount) {
-								@try{
+								@try {
 									for (int i=0; i<touches.count; i++) {
 										UIView *touchIndicator = pendingRemove[i][@"indicator"];
 										[touchIndicator removeFromSuperview];
@@ -500,9 +510,7 @@ static int fadeEndCount = 0;
 									[pendingRemove removeObjectsInRange:NSMakeRange(0, pendingRemove.count)];
 									fadeStartCount = 0;
 									fadeEndCount = 0;
-								}@catch(NSException *e) {
-									//What the fuck no exception caught but crashing without catch???
-									showBulletin([NSString stringWithFormat:@"Exception: %@", [e reason]]);
+								} @catch(NSException *e) {
 								}
 							}
 						}];
