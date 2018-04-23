@@ -133,7 +133,9 @@ UIWindow* customWindowMethod(id self, SEL _cmd) {
 static id observer;
 static id RKEListenerInstance = NULL;
 static BOOL inApp = false;
-static NSDictionary *setting = [[NSMutableDictionary alloc] initWithContentsOfFile: @"/var/mobile/Library/Preferences/com.estertion.replaykiteverywhere.plist"];
+static NSDictionary *setting = NULL;
+static NSMutableArray* touches = NULL;
+static NSMutableArray* pendingRemove = NULL;
 void reloadSetting() {
 	[setting release];
 	setting = [[NSMutableDictionary alloc] initWithContentsOfFile: @"/var/mobile/Library/Preferences/com.estertion.replaykiteverywhere.plist"];
@@ -217,6 +219,9 @@ void reloadSetting() {
 										"@@:"
 									);
 								}
+
+								touches = [[NSMutableArray alloc] init];
+								pendingRemove = [[NSMutableArray alloc] init];
 							}
 						}
 
@@ -415,7 +420,6 @@ static RPPreviewViewController *previewControllerShare = NULL;
 
 @end
 
-static NSMutableArray* touches = [[NSMutableArray alloc] init];
 int findTouch(double x, double y) {
 	for (int i=0; i<touches.count; i++) {
 		CGPoint touch;
@@ -424,7 +428,6 @@ int findTouch(double x, double y) {
 	}
 	return -1;
 }
-static NSMutableArray* pendingRemove = [[NSMutableArray alloc] init];
 static int remainingTouch = 0;
 static int fadeStartCount = 0;
 static int fadeEndCount = 0;
@@ -502,8 +505,8 @@ static int fadeEndCount = 0;
 							fadeEndCount++;
 							if (fadeStartCount <= fadeEndCount) {
 								@try {
-									for (int i=0; i<touches.count; i++) {
-										UIView *touchIndicator = pendingRemove[i][@"indicator"];
+									for (int i=0; i<pendingRemove.count; i++) {
+										UIView *touchIndicator = pendingRemove[i][@"view"];
 										[touchIndicator removeFromSuperview];
 										[touchIndicator release];
 									}
