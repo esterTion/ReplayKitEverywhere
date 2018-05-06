@@ -8,6 +8,7 @@
 #import <Foundation/Foundation.h>
 #import <AVFoundation/AVFoundation.h>
 #import <AudioToolbox/AudioToolbox.h>
+#import <notify.h>
 
 NSString* RKEGetSettingValue(NSString *key, NSString *defaultValue) {
   NSDictionary *setting = [NSDictionary dictionaryWithContentsOfFile: @"/var/mobile/Library/Preferences/com.estertion.replaykiteverywhere.plist"];
@@ -97,3 +98,7 @@ static NSDictionary *audioSampleRate = @{
     return %orig;
 }
 %end
+
+%ctor {
+  notify_post("com.estertion.replaykiteverywhere.replayd_started");
+}

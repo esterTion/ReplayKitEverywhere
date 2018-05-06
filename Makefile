@@ -10,7 +10,7 @@ SYSROOT = $(THEOS)/sdks/iPhoneOS10.3.sdk
 ReplayKitEverywhere_FILES = ReplayKitEverywhere_listener.xm
 ReplayKitEverywhere_LIBRARIES = activator rocketbootstrap
 ReplayKitEverywhere_FRAMEWORKS = ReplayKit
-ReplayKitEverywhere_PRIVATE_FRAMEWORKS = PhotoLibraryServices
+ReplayKitEverywhere_PRIVATE_FRAMEWORKS = PhotoLibraryServices BulletinBoard
 rke-replayd_FILES = rke-replayd.xm
 rke-replayd_FRAMEWORKS = AVFoundation
 

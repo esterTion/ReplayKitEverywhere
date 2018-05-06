@@ -23,13 +23,17 @@
 @interface PLAssetsSaver : NSObject {
 	NSMutableArray * __pendingSaveAssetJobs;
 }
-
 @property (nonatomic, retain) NSMutableArray *_pendingSaveAssetJobs;
-
 + (id)sharedAssetsSaver;
-
 - (void)saveVideoAtPath:(id)arg1 properties:(id)arg2 completionBlock:(id /* block */)arg3;
+@end
 
+@interface RKEBulletinRequest: BBBulletinRequest
+@end
+@implementation RKEBulletinRequest
+ -(bool)bulletinAlertShouldOverrideQuietMode {
+	 return true;
+ }
 @end
 
 @interface RKE_RPScreenRecorder : NSObject
@@ -39,7 +43,7 @@
 static NSBundle *tweakBundle = NULL;
 
 void showBulletin(NSString *message) {
-	BBBulletinRequest *bulletin = [[%c(BBBulletinRequest) alloc] init];
+	BBBulletinRequest *bulletin = [[%c(RKEBulletinRequest) alloc] init];
 	bulletin.sectionID = @"com.estertion.replaykiteverywhere";
 	bulletin.title = @"ReplayKit Everywhere";
 	bulletin.message = message;
@@ -175,6 +179,19 @@ void reloadSetting() {
 								[RKEListenerInstance release];
 								RKEListenerInstance = [RKEverywhereListener new];
 								[LASharedActivator registerListener:RKEListenerInstance forName:@"com.estertion.replaykiteverywhere"];
+							}
+						);
+						notify_register_dispatch("com.estertion.replaykiteverywhere.replayd_started",
+							&notify_token,
+							dispatch_get_main_queue(),^(int token) {
+								if (recording) {
+									showBulletin([tweakBundle localizedStringForKey:@"Warning: recorder just crashed, current recording might be corrupted and it might not work until app restarted" value:@"" table:nil]);
+									recording = false;
+									[LASharedActivator unregisterListenerWithName:@"com.estertion.replaykiteverywhere"];
+									[RKEListenerInstance release];
+									RKEListenerInstance = [RKEverywhereListener new];
+									[LASharedActivator registerListener:RKEListenerInstance forName:@"com.estertion.replaykiteverywhere"];
+								}
 							}
 						);
 
