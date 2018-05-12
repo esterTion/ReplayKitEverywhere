@@ -19,6 +19,7 @@
 #import "ReplayKitEverywhere.h"
 #define LIGHTMESSAGING_TIMEOUT 500
 #import <LightMessaging/LightMessaging.h>
+#import "GetBSDProcessList.h"
 //#import <PhotoLibraryServices/PLAssetsSaver.h>
 @interface PLAssetsSaver : NSObject {
 	NSMutableArray * __pendingSaveAssetJobs;
@@ -27,6 +28,19 @@
 + (id)sharedAssetsSaver;
 - (void)saveVideoAtPath:(id)arg1 properties:(id)arg2 completionBlock:(id /* block */)arg3;
 @end
+
+static id observer;
+static id RKEListenerInstance = NULL;
+static BOOL inApp = false;
+static NSDictionary *setting = NULL;
+static NSMutableArray* touches = NULL;
+static NSMutableArray* pendingRemove = NULL;
+static NSBundle *tweakBundle = NULL;
+static BOOL recording = false;
+static RPPreviewViewController *previewControllerShare = NULL;
+static int remainingTouch = 0;
+static int fadeStartCount = 0;
+static int fadeEndCount = 0;
 
 @interface RKEBulletinRequest: BBBulletinRequest
 @end
@@ -40,10 +54,9 @@
 -stopRecordingWithVideoURLHandler:(id)block;
 @end
 
-static NSBundle *tweakBundle = NULL;
-
 void showBulletin(NSString *message) {
-	BBBulletinRequest *bulletin = [[%c(RKEBulletinRequest) alloc] init];
+	NSLog(@"[replaykit] %@", message);
+	RKEBulletinRequest *bulletin = [[RKEBulletinRequest alloc] init];
 	bulletin.sectionID = @"com.estertion.replaykiteverywhere";
 	bulletin.title = @"ReplayKit Everywhere";
 	bulletin.message = message;
@@ -102,7 +115,6 @@ void showBulletinListener(CFMachPortRef port, LMMessage *message, CFIndex size, 
 @interface RKEverywhereListener : NSObject <LAListener>
 @end
 
-static BOOL recording = false;
 @implementation RKEverywhereListener
 
 - (void)activator:(LAActivator *)activator receiveEvent:(LAEvent *)event {
@@ -130,16 +142,74 @@ static BOOL recording = false;
 
 @end
 
+/*
+ * From https://developer.apple.com/library/content/technotes/tn2050/_index.html#//apple_ref/doc/uid/DTS10003081-CH1-SUBSECTION10
+ */
+static void replaydDidExited(
+    CFFileDescriptorRef f, 
+    CFOptionFlags       callBackTypes, 
+    void *              info
+)
+{
+    struct kevent   event;
+    (void) kevent( CFFileDescriptorGetNativeDescriptor(f), NULL, 0, &event, 1, NULL);
+
+    NSLog(@"[ReplayKit Everywhere] replayd[%d] terminated", (int) (pid_t) event.ident);
+		if (recording) {
+			showBulletin([tweakBundle localizedStringForKey:@"Warning: recorder just crashed, current recording might be corrupted and it might not work until app restarted" value:@"" table:nil]);
+			recording = false;
+			[LASharedActivator unregisterListenerWithName:@"com.estertion.replaykiteverywhere"];
+			[RKEListenerInstance release];
+			RKEListenerInstance = [RKEverywhereListener new];
+			[LASharedActivator registerListener:RKEListenerInstance forName:@"com.estertion.replaykiteverywhere"];
+		}
+}
+static void observeReplaydExit() {
+	kinfo_proc *results = NULL;
+	size_t procCount=0;
+	GetBSDProcessList(&results, &procCount);
+	kinfo_proc* current_process = results;
+	for (int i=0; i<procCount && i<max_processes; i++)
+	{
+		if (strcmp(current_process->kp_proc.p_comm, "replayd") == 0) {
+			int                     kq;
+			struct kevent           changes;
+			CFFileDescriptorContext context = { 0, NULL, NULL, NULL, NULL };
+			CFRunLoopSourceRef      rls;
+
+			// Create the kqueue and set it up to watch for SIGCHLD. Use the 
+			// new-in-10.5 EV_RECEIPT flag to ensure that we get what we expect.
+
+			kq = kqueue();
+
+			EV_SET(&changes, current_process->kp_proc.p_pid, EVFILT_PROC, EV_ADD | EV_RECEIPT, NOTE_EXIT, 0, NULL);
+			(void) kevent(kq, &changes, 1, &changes, 1, NULL);
+
+			// Wrap the kqueue in a CFFileDescriptor (new in Mac OS X 10.5!). Then 
+			// create a run-loop source from the CFFileDescriptor and add that to the 
+			// runloop.
+
+			CFFileDescriptorRef noteExitKQueueRef = CFFileDescriptorCreate(NULL, kq, true, replaydDidExited, &context);
+			rls = CFFileDescriptorCreateRunLoopSource(NULL, noteExitKQueueRef, 0);
+			CFRunLoopAddSource(CFRunLoopGetCurrent(), rls, kCFRunLoopDefaultMode);
+			CFRelease(rls);
+
+			CFFileDescriptorEnableCallBacks(noteExitKQueueRef, kCFFileDescriptorReadCallBack);
+
+			NSLog(@"[ReplayKit Everywhere] replayd[%d] started", current_process->kp_proc.p_pid);
+
+			break;
+		}
+		current_process += 1;
+	}
+	free(results);
+	results = NULL;
+}
+
 UIWindow* customWindowMethod(id self, SEL _cmd) {
 	return [UIApplication sharedApplication].keyWindow;
 }
 
-static id observer;
-static id RKEListenerInstance = NULL;
-static BOOL inApp = false;
-static NSDictionary *setting = NULL;
-static NSMutableArray* touches = NULL;
-static NSMutableArray* pendingRemove = NULL;
 void reloadSetting() {
 	[setting release];
 	setting = [[NSMutableDictionary alloc] initWithContentsOfFile: @"/var/mobile/Library/Preferences/com.estertion.replaykiteverywhere.plist"];
@@ -184,16 +254,10 @@ void reloadSetting() {
 						notify_register_dispatch("com.estertion.replaykiteverywhere.replayd_started",
 							&notify_token,
 							dispatch_get_main_queue(),^(int token) {
-								if (recording) {
-									showBulletin([tweakBundle localizedStringForKey:@"Warning: recorder just crashed, current recording might be corrupted and it might not work until app restarted" value:@"" table:nil]);
-									recording = false;
-									[LASharedActivator unregisterListenerWithName:@"com.estertion.replaykiteverywhere"];
-									[RKEListenerInstance release];
-									RKEListenerInstance = [RKEverywhereListener new];
-									[LASharedActivator registerListener:RKEListenerInstance forName:@"com.estertion.replaykiteverywhere"];
-								}
+								observeReplaydExit();
 							}
 						);
+						observeReplaydExit();
 
 					} else {
 						
@@ -285,8 +349,6 @@ NSString* RKEGetSettingValue(NSString *key, NSString *defaultValue) {
 	}
 	return valueStr;
 }
-
-static RPPreviewViewController *previewControllerShare = NULL;
 
 @implementation ReplayKitEverywhere
 
@@ -445,9 +507,6 @@ int findTouch(double x, double y) {
 	}
 	return -1;
 }
-static int remainingTouch = 0;
-static int fadeStartCount = 0;
-static int fadeEndCount = 0;
 %hook UIApplication
 
 -(void) sendEvent:(UIEvent*)event {

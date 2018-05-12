@@ -17,4 +17,5 @@
   "Failed to save record, file %@ not found" = "保存录像失败，文件 %@ 不存在";
   "Saving record to camera roll" = "正在保存录像至相册";
   "Record saved! " = "录像已保存！";
+  "Warning: recorder just crashed, current recording might be corrupted and it might not work until app restarted" = "屏幕录像服务已崩溃，当前录像可能已损坏，重新启动app前可能无法再次开始录像";
 }
