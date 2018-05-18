@@ -320,6 +320,10 @@ void reloadSetting() {
 {
 	return NO;
 }
+- (BOOL)prefersStatusBarHidden
+{
+	return NO;
+}
 - (NSUInteger)supportedInterfaceOrientations {
 	return [[UIApplication sharedApplication].keyWindow.rootViewController supportedInterfaceOrientations];
 }
@@ -488,10 +492,12 @@ NSString* RKEGetSettingValue(NSString *key, NSString *defaultValue) {
 }
 
 +(void)previewControllerDidFinish:(RPPreviewViewController *)previewController {
-	if (previewControllerShare != NULL) {
-		[previewControllerShare dismissViewControllerAnimated:YES completion:nil];
-		previewControllerShare = NULL;
-	}
+	dispatch_async(dispatch_get_main_queue(), ^{
+		if (previewControllerShare != NULL) {
+			[previewControllerShare dismissViewControllerAnimated:YES completion:nil];
+			previewControllerShare = NULL;
+		}
+	});
 }
 
 +(void)previewController:(RPPreviewViewController *)previewController didFinishWithActivityTypes:(NSSet <NSString *>*)activityTypes {
