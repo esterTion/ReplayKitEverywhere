@@ -29,6 +29,41 @@
 - (void)saveVideoAtPath:(id)arg1 properties:(id)arg2 completionBlock:(id /* block */)arg3;
 @end
 
+//#import <BulletinBoard/BBDataProviderConnection.h>
+@interface BBDataProviderConnection : NSObject
+- (id)addDataProvider:(id)arg1;
+- (id)initWithServiceName:(id)arg1 onQueue:(id)arg2;
+@end
+//#import <BulletinBoard/BBDataProviderProxy.h>
+@interface BBDataProviderProxy : NSObject
+- (void)addBulletin:(id)arg1 interrupt:(bool)arg2;
+- (void)invalidateBulletins;
+@end
+//#import <BulletinBoard/BBSectionIcon.h>
+@interface BBSectionIcon : NSObject
+- (void)addVariant:(id)arg1;
+@end
+//#import <BulletinBoard/BBSectionIconVariant.h>
+@interface BBSectionIconVariant : NSObject
++ (id)variantWithFormat:(long long)arg1 imageData:(id)arg2;
++ (id)variantWithFormat:(long long)arg1 imageName:(id)arg2 inBundle:(id)arg3;
+@end
+//#import <BulletinBoard/BBAction.h>
+@interface BBAction : NSObject
++ (id)actionWithIdentifier:(id)arg1 title:(id)arg2;
+- (void)setActivationMode:(unsigned long long)arg1;
+@end
+
+@interface RKEBulletinRequest: BBBulletinRequest
+@end
+@interface RKEBulletinProvider : NSObject {
+	id _dataProviderQueue;
+	id _dataProviderConnection;
+	id _dataProviderProxy;
+}
+-(id)sectionIdentifier;
+@end
+
 static id observer;
 static id RKEListenerInstance = NULL;
 static BOOL inApp = false;
@@ -41,13 +76,51 @@ static RPPreviewViewController *previewControllerShare = NULL;
 static int remainingTouch = 0;
 static int fadeStartCount = 0;
 static int fadeEndCount = 0;
+static RKEBulletinProvider *bulletinProvider = NULL;
 
-@interface RKEBulletinRequest: BBBulletinRequest
-@end
 @implementation RKEBulletinRequest
- -(bool)bulletinAlertShouldOverrideQuietMode {
-	 return true;
- }
+	-(id)init {
+		[super init];
+		self.sectionID = @"com.estertion.replaykiteverywhere";
+		self.title = @"ReplayKit Everywhere";
+		self.section = [bulletinProvider sectionIdentifier];
+		return self;
+	}
+	//-(id)sectionID { return @"com.estertion.replaykiteverywhere"; }
+	-(id)icon {
+		BBSectionIcon *icon = [[BBSectionIcon alloc] init];
+		[icon addVariant: [BBSectionIconVariant variantWithFormat:0 imageName: @"Icon" inBundle:[NSBundle bundleWithPath:@"/Library/PreferenceBundles/ReplayKitEverywherePrefs.bundle"]]];
+		return icon;
+	}
+	-(id)recordID { return @"orginalRecordID"; }
+	-(NSDate*)date { return [NSDate date]; }
+	-(NSDate*)expirationDate { return [NSDate date]; }
+	-(bool)ignoresQuietMode { return true; }
+  -(bool)bulletinAlertShouldOverrideQuietMode { return true; }
+@end
+@implementation RKEBulletinProvider
+	-(id)dataProviderQueue { return self->_dataProviderQueue; }
+	-(id)dataProviderConnection { return self->_dataProviderConnection; }
+	-(id)dataProviderProxy { return self->_dataProviderProxy; }
+	-(void)setDataProviderQueue:(id)val { self->_dataProviderQueue = val; }
+	-(void)setDataProviderConnection:(id)val { self->_dataProviderConnection = val; }
+	-(void)setDataProviderProxy:(id)val { self->_dataProviderProxy = val; }
+	-(id)sectionIdentifier { return @"ReplayKit Everywhere"; }
+	-(id)sortDescriptors { return [NSArray arrayWithObjects:[NSSortDescriptor sortDescriptorWithKey:@"date" ascending:false], nil]; }
+	-(id) init {
+		[super init];
+	  id queue = dispatch_queue_create("com.estertion.replaykiteverywhere.bulletinboard", 0);
+		self->_dataProviderQueue = queue;
+		BBDataProviderConnection *connection = [[[BBDataProviderConnection alloc] initWithServiceName: @"com.estertion.replaykiteverywhere.bulletinboard" onQueue:queue] retain];
+		self->_dataProviderConnection = connection;
+		BBDataProviderProxy *proxy = [[connection addDataProvider:self] retain];
+		self->_dataProviderProxy = proxy;
+		[proxy invalidateBulletins];
+		return self;
+	}
+	-(void) addBulletin:(id)bulletin {
+		[self->_dataProviderProxy addBulletin:bulletin interrupt:true];
+	}
 @end
 
 @interface RKE_RPScreenRecorder : NSObject
@@ -57,11 +130,13 @@ static int fadeEndCount = 0;
 void showBulletin(NSString *message) {
 	NSLog(@"[replaykit] %@", message);
 	RKEBulletinRequest *bulletin = [[RKEBulletinRequest alloc] init];
-	bulletin.sectionID = @"com.estertion.replaykiteverywhere";
-	bulletin.title = @"ReplayKit Everywhere";
 	bulletin.message = message;
-	SBBulletinBannerController *controller = [%c(SBBulletinBannerController) sharedInstance];
-	[controller observer:nil addBulletin:bulletin forFeed:2 playLightsAndSirens:YES withReply:nil];
+	if (objc_getClass("SBBulletinBannerController")) {
+		SBBulletinBannerController *controller = [%c(SBBulletinBannerController) sharedInstance];
+		[controller observer:nil addBulletin:bulletin forFeed:2 playLightsAndSirens:YES withReply:nil];
+	} else if (bulletinProvider) {
+		[bulletinProvider addBulletin:bulletin];
+	}
 	[bulletin release];
 }
 
@@ -258,6 +333,8 @@ void reloadSetting() {
 							}
 						);
 						observeReplaydExit();
+
+						bulletinProvider = [[RKEBulletinProvider alloc] init];
 
 					} else {
 						

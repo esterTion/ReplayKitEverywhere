@@ -116,6 +116,11 @@
 			action = "openTempByIFile";
 		},
 		{
+			cell = "PSButtonCell";
+			label = "Open directory (Filza)";
+			action = "openTempByFilza";
+		},
+		{
 			cell = "PSGroupCell";
 			footerText = TWEAK_ABOUT;
 		},

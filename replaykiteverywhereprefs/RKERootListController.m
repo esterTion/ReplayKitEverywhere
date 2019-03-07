@@ -58,14 +58,24 @@ static NSBundle *uikitBundle;
     [application openURL:URL];
   }
 }
+- (void)openTempByFilza {
+	UIApplication *application = [UIApplication sharedApplication];
+	NSURL *URL = [NSURL URLWithString:@"filza:///var/mobile/Library/ReplayKit"];
+	[[UIApplication sharedApplication ] openURL:URL ];
+	if ([application respondsToSelector:@selector(openURL:options:completionHandler:)]) {
+    [application openURL:URL options:@{} completionHandler:^(BOOL success){}];
+  } else {
+    [application openURL:URL];
+  }
+}
 
 - (NSString *)prettifySize:(unsigned int)size {
 	double sizeF = size;
 	NSArray *sizeUnit = @[
 		@" B",
-		@" KB",
-		@" MB",
-		@" GB"
+		@" KiB",
+		@" MiB",
+		@" GiB"
 	];
 	char sizeUnitIndex = 0;
 	while (sizeF >= 1024) {

@@ -91,6 +91,14 @@ static NSDictionary *audioSampleRate = @{
     return true;
   }
 }
+-(bool)isExemptFromAcknowledgementAlertSession:(id)arg0 {
+  NSString *skipWarn = RKEGetSettingValue(@"skipWarn", @"0");
+  if ([skipWarn isEqualToString:@"0"]) {
+    return %orig;
+  } else {
+    return true;
+  }
+}
 -(bool)isApplicationInForegroundWithBundleIdentifier:(NSString*) id {
   if ([RKEGetSettingValue(@"fix_foreground", @"0") isEqualToString:@"1"])
     return true;
