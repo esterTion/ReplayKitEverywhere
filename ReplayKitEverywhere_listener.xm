@@ -239,7 +239,7 @@ static void replaydDidExited(
 			[LASharedActivator registerListener:RKEListenerInstance forName:@"com.estertion.replaykiteverywhere"];
 		}
 }
-static void observeReplaydExit() {
+static void observeReplaydExit(bool killProc) {
 	kinfo_proc *results = NULL;
 	size_t procCount=0;
 	GetBSDProcessList(&results, &procCount);
@@ -247,6 +247,11 @@ static void observeReplaydExit() {
 	for (int i=0; i<procCount && i<max_processes; i++)
 	{
 		if (strcmp(current_process->kp_proc.p_comm, "replayd") == 0) {
+			// Force reload replayd on SpringBoard restart, in case unc0ver reload daemon has problem
+			if (killProc) {
+				kill(current_process->kp_proc.p_pid, 9);
+				return;
+			}
 			int                     kq;
 			struct kevent           changes;
 			CFFileDescriptorContext context = { 0, NULL, NULL, NULL, NULL };
@@ -329,10 +334,10 @@ void reloadSetting() {
 						notify_register_dispatch("com.estertion.replaykiteverywhere.replayd_started",
 							&notify_token,
 							dispatch_get_main_queue(),^(int token) {
-								observeReplaydExit();
+								observeReplaydExit(false);
 							}
 						);
-						observeReplaydExit();
+						observeReplaydExit(true);
 
 						bulletinProvider = [[RKEBulletinProvider alloc] init];
 

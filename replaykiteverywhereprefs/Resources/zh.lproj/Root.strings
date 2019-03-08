@@ -1,6 +1,6 @@
 {
   NOTICE_TEXT = "注意：如果遇到无法开启/不显示录屏结果等异常的情况，说明此程序不兼容ReplayKit录屏";
-  QUALITY_FOOT = "质量设置会影响支持ReplayKit的游戏";
+  QUALITY_FOOT = "质量设置会影响支持ReplayKit的游戏\niOS 11+的内置录屏也受此设置影响";
   QUALITY_DESCRPITION = "一分钟视频大约占用：\n· 15MB - 节约空间 \n· 30MB - 体积较小 \n· 60MB - 注重质量 \n· 112MB - 极致细节 \n· 185MB - 极致细节 (iPad用) \n\n\n\n如果你想了解细节：(码率参数, 视频 + 音频)\n· 2mbps + 64kbps@22050Hz - 节约空间（系统默认质量） \n· 4mbps + 128kbps@44100Hz - 体积较小 \n· 8mbps + 256kbps@48000Hz - 注重质量 \n· 15mbps + 320kbps@48000Hz - 极致细节 \n· 25mbps + 320kbps@48000Hz - 极致细节 (iPad用)";
   TEMPORARY_FILE_DESCRIPTION = "录屏临时文件存储在 /var/mobile/Library/ReplayKit 目录。\n临时文件不会被自动删除，并会留在临时文件夹中直到下一次同一app录屏覆盖。";
   TWEAK_ABOUT = "ReplayKit是苹果提供的iOS开发框架。\nReplayKit Everywhere是为所有app启用ReplayKit的插件。";

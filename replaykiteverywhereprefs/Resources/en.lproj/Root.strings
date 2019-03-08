@@ -1,6 +1,6 @@
 {
   NOTICE_TEXT = "NOTICE: If you found an app cannot start / doesn't show the preview or has other error, that indicates the app is not compatible with ReplayKit recording";
-  QUALITY_FOOT = "Quality setting will affect app/game with native ReplayKit support. ";
+  QUALITY_FOOT = "Quality setting will affect app/game with native ReplayKit support. \nBuilt-in recording in control centre (iOS 11+) is also affected. ";
   QUALITY_DESCRPITION = "A minute of video will be approximately: \n· 15MB with Space saver \n· 30MB with Balanced size \n· 60MB with Focus on quality \n· 112MB with Xtreme detailed \n· 185MB with Xtreme detailed (for iPad) \n\n\n\nIf you are curious: (bitrate parameter, video + audio)\n· 2mbps + 64kbps@22050Hz with Space saver (system default quality) \n· 4mbps + 128kbps@44100Hz with Balanced size \n· 8mbps + 256kbps@48000Hz with Focus on quality \n· 15mbps + 320kbps@48000Hz with Xtreme detailed \n· 25mbps + 320kbps@48000Hz with Xtreme detailed (for iPad)";
   TEMPORARY_FILE_DESCRIPTION = "Temporary record files are located in /var/mobile/Library/ReplayKit. \nThey won't be deleted automatically and may stay in the folder until next record in the same app overwrites it. ";
   TWEAK_ABOUT = "ReplayKit is an iOS development framework provided by Apple Inc. \nReplayKit Everywhere is a tweak that helps you enable ReplayKit for all the apps. ";
