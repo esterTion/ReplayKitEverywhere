@@ -250,7 +250,7 @@ static void observeReplaydExit(bool killProc) {
 			// Force reload replayd on SpringBoard restart, in case unc0ver reload daemon has problem
 			if (killProc) {
 				kill(current_process->kp_proc.p_pid, 9);
-				return;
+				break;
 			}
 			int                     kq;
 			struct kevent           changes;

@@ -3,7 +3,7 @@
 
 Test package repo: https://repo.estertion.win/
 
-Support iOS 9 & 10  
+Support iOS 9 - 12  
 
 Released on [BigBoss](http://cydia.saurik.com/package/com.estertion.replaykiteverywhere/)  
 
