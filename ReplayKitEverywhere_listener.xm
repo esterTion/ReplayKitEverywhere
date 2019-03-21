@@ -339,7 +339,9 @@ void reloadSetting() {
 						);
 						observeReplaydExit(true);
 
-						bulletinProvider = [[RKEBulletinProvider alloc] init];
+						if (!objc_getClass("SBBulletinBannerController")) {
+							bulletinProvider = [[RKEBulletinProvider alloc] init];
+						}
 
 					} else {
 						
@@ -348,8 +350,8 @@ void reloadSetting() {
 						NSUInteger count = args.count;
 						if (count != 0) {
 							NSString *executablePath = args[0];
-							BOOL isExtensionOrApp = [executablePath rangeOfString:@"/Application"].location != NSNotFound;
-							if (isExtensionOrApp) {
+							BOOL isApp = [executablePath rangeOfString:@"/Application"].location != NSNotFound && [executablePath rangeOfString:@".appex/"].location == NSNotFound;
+							if (isApp) {
 								NSString *bundleId = [[NSBundle mainBundle] bundleIdentifier];
 								int notify_token;
 								notify_register_dispatch([[bundleId stringByAppendingString:@".replaykit_receiver"] cStringUsingEncoding:NSUTF8StringEncoding],
@@ -603,14 +605,15 @@ int findTouch(double x, double y) {
 	if ([RKEGetSettingValue(@"indicator", @"1") isEqualToString:@"0"]) return;
 	if ([RKEGetSettingValue(@"indicator_always", @"0") isEqualToString:@"0"] && !RPScreenRecorder.sharedRecorder.recording) return;
 	if ([event type] == UIEventTypeTouches) {
+		int idx = 0;
 		for (UITouch* touch in event.allTouches) {
+			idx++;
 			UIView *keyWindow = [UIApplication sharedApplication].keyWindow;
 			CGPoint point = [touch locationInView:keyWindow];
-			CGPoint prevPoint = [touch previousLocationInView:keyWindow];
 			int foundTouchIndex;
 			UIView* touchIndicator = NULL;
 			switch ([touch phase]) {
-				case UITouchPhaseBegan:
+				case UITouchPhaseBegan: {
 					touchIndicator = [[UIView alloc] initWithFrame:CGRectMake(point.x - 10, point.y - 10, 20, 20)];
 					touchIndicator.userInteractionEnabled = NO;
 					touchIndicator.alpha = 0.7;
@@ -619,30 +622,20 @@ int findTouch(double x, double y) {
 					touchIndicator.layer.borderColor = [UIColor blackColor].CGColor;
 					touchIndicator.layer.borderWidth = 1.0f;
 					[keyWindow addSubview:touchIndicator];
-					[touches addObject: @{@"point":[NSValue valueWithCGPoint:point], @"indicator": touchIndicator}];
+					[touches addObject: touchIndicator];
 					remainingTouch++;
 					break;
-				case UITouchPhaseMoved:
-					foundTouchIndex = findTouch(prevPoint.x, prevPoint.y);
-					if (foundTouchIndex != -1) {
-						touchIndicator = touches[foundTouchIndex][@"indicator"];
-						[touches replaceObjectAtIndex:foundTouchIndex withObject:@{@"point":[NSValue valueWithCGPoint:point], @"indicator": touchIndicator}];
-						touchIndicator.frame = CGRectMake(point.x - 10, point.y - 10, 20, 20);
-					}
+				}
+				case UITouchPhaseMoved: {
+					foundTouchIndex = idx - 1;
+					touchIndicator = touches[foundTouchIndex];
+					touchIndicator.frame = CGRectMake(point.x - 10, point.y - 10, 20, 20);
 					break;
+				}
 				case UITouchPhaseEnded:
 				case UITouchPhaseCancelled:
-					foundTouchIndex = findTouch(prevPoint.x, prevPoint.y);
-					if (foundTouchIndex != -1) {
-						touchIndicator = touches[foundTouchIndex][@"indicator"];
-					} else {
-						foundTouchIndex = findTouch(point.x, point.y);
-						if (foundTouchIndex != -1) {
-							touchIndicator = touches[foundTouchIndex][@"indicator"];
-						} else {
-							NSLog(@"[ReplayKit Everywhere] touch [%g,%g] not found to remove", point.x, point.y);
-						}
-					}
+					foundTouchIndex = idx - 1;
+					touchIndicator = touches[foundTouchIndex];
 					remainingTouch--;
 
 					//found touch, add to remove queue & remove from touches array
@@ -687,7 +680,7 @@ int findTouch(double x, double y) {
 					if (remainingTouch == 0 && touches.count > 0) {
 						NSLog(@"[ReplayKit Everywhere] cleaning remaining touch");
 						for (int i=0; i<touches.count; i++) {
-							touchIndicator = touches[i][@"indicator"];
+							touchIndicator = touches[i];
 							[touchIndicator removeFromSuperview];
 							[touchIndicator release];
 						}
