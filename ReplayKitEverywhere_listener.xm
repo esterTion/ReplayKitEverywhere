@@ -640,6 +640,7 @@ int findTouch(double x, double y) {
 
 					//found touch, add to remove queue & remove from touches array
 					if (touchIndicator != NULL) {
+						idx--;
 						[pendingRemove addObject:@{
 							@"animated": @NO,
 							@"view": touchIndicator
