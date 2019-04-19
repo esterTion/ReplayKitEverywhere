@@ -87,12 +87,20 @@
 				4
 			);
 			validTitles = (
-				"Space saver",
+				"Default",
 				"Balanced size",
 				"Focus on quality",
 				"Xtreme detailed",
 				"Xtreme detailed (for iPad)"
 			);
+		},
+		{
+			cell = "PSSwitchCell";
+			label = "Encode using HEVC";
+			defaults = "com.estertion.replaykiteverywhere";
+			default = "0";
+			enabled = "0";
+			key = "useHEVC";
 		},
 		{
 			cell = "PSGroupCell";

@@ -57,6 +57,7 @@ static NSDictionary *audioSampleRate = @{
   @"3": @48000.0,
   @"4": @48000.0
 };
+static bool supportHEVC = [[AVAssetExportSession allExportPresets] containsObject:@"AVAssetExportPresetHEVCHighestQuality"];
 
 %hook AVAssetWriterInput
 
@@ -73,6 +74,17 @@ static NSDictionary *audioSampleRate = @{
       modify[AVSampleRateKey] = audioSampleRate[quality];
       modify[AVEncoderBitRateKey] = audioBitrate[quality];
     }
+    outputSettings = [NSDictionary dictionaryWithDictionary:modify];
+    [modify release];
+  }
+
+  if (supportHEVC && [mediaType isEqualToString:@"vide"] && [RKEGetSettingValue(@"useHEVC", @"0") isEqualToString:@"1"]) {
+    NSMutableDictionary *modify = [outputSettings mutableCopy];
+    modify[AVVideoCodecKey] = @"hvc1";
+    NSMutableDictionary *compressModify = [modify[@"AVVideoCompressionPropertiesKey"] mutableCopy];
+    compressModify[AVVideoAverageBitRateKey] = [NSNumber numberWithLong:[(NSNumber*)compressModify[AVVideoAverageBitRateKey] longValue] * 3 / 4];
+    compressModify[AVVideoProfileLevelKey] = @"HEVC_Main_AutoLevel";
+    modify[@"AVVideoCompressionPropertiesKey"] = compressModify;
     outputSettings = [NSDictionary dictionaryWithDictionary:modify];
     [modify release];
   }
