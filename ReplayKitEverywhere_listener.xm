@@ -73,7 +73,6 @@ static NSMutableArray* pendingRemove = NULL;
 static NSBundle *tweakBundle = NULL;
 static BOOL recording = false;
 static RPPreviewViewController *previewControllerShare = NULL;
-static int remainingTouch = 0;
 static int fadeStartCount = 0;
 static int fadeEndCount = 0;
 static RKEBulletinProvider *bulletinProvider = NULL;
@@ -597,6 +596,18 @@ int findTouch(double x, double y) {
 	}
 	return -1;
 }
+static uint64_t cycle = 0;
+void addIndicator(CGPoint point, UIView* keyWindow) {
+	UIView* touchIndicator = [[UIView alloc] initWithFrame:CGRectMake(point.x - 10, point.y - 10, 20, 20)];
+	touchIndicator.userInteractionEnabled = NO;
+	touchIndicator.alpha = 0.7;
+	touchIndicator.layer.cornerRadius = 10;
+	touchIndicator.backgroundColor = [UIColor whiteColor];
+	touchIndicator.layer.borderColor = [UIColor blackColor].CGColor;
+	touchIndicator.layer.borderWidth = 1.0f;
+	[keyWindow addSubview:touchIndicator];
+	[touches addObject: @{@"point":[NSValue valueWithCGPoint:point], @"indicator": touchIndicator, @"cycle": [NSNumber numberWithUnsignedLongLong:cycle]}];
+}
 %hook UIApplication
 
 -(void) sendEvent:(UIEvent*)event {
@@ -605,91 +616,80 @@ int findTouch(double x, double y) {
 	if ([RKEGetSettingValue(@"indicator", @"1") isEqualToString:@"0"]) return;
 	if ([RKEGetSettingValue(@"indicator_always", @"0") isEqualToString:@"0"] && !RPScreenRecorder.sharedRecorder.recording) return;
 	if ([event type] == UIEventTypeTouches) {
-		int idx = 0;
 		for (UITouch* touch in event.allTouches) {
-			idx++;
 			UIView *keyWindow = [UIApplication sharedApplication].keyWindow;
 			CGPoint point = [touch locationInView:keyWindow];
+			CGPoint prevPoint = [touch previousLocationInView:keyWindow];
 			int foundTouchIndex;
 			UIView* touchIndicator = NULL;
 			switch ([touch phase]) {
 				case UITouchPhaseBegan: {
-					touchIndicator = [[UIView alloc] initWithFrame:CGRectMake(point.x - 10, point.y - 10, 20, 20)];
-					touchIndicator.userInteractionEnabled = NO;
-					touchIndicator.alpha = 0.7;
-					touchIndicator.layer.cornerRadius = 10;
-					touchIndicator.backgroundColor = [UIColor whiteColor];
-					touchIndicator.layer.borderColor = [UIColor blackColor].CGColor;
-					touchIndicator.layer.borderWidth = 1.0f;
-					[keyWindow addSubview:touchIndicator];
-					[touches addObject: touchIndicator];
-					remainingTouch++;
+					addIndicator(point, keyWindow);
 					break;
 				}
 				case UITouchPhaseMoved: {
-					foundTouchIndex = idx - 1;
-					touchIndicator = touches[foundTouchIndex];
-					touchIndicator.frame = CGRectMake(point.x - 10, point.y - 10, 20, 20);
+					foundTouchIndex = findTouch(prevPoint.x, prevPoint.y);
+					if (foundTouchIndex != -1) {
+						touchIndicator = touches[foundTouchIndex][@"indicator"];
+						[touches replaceObjectAtIndex:foundTouchIndex withObject:@{@"point":[NSValue valueWithCGPoint:point], @"indicator": touchIndicator, @"cycle": [NSNumber numberWithUnsignedLongLong:cycle]}];
+						touchIndicator.frame = CGRectMake(point.x - 10, point.y - 10, 20, 20);
+					} else {
+						addIndicator(point, keyWindow);
+					}
 					break;
 				}
-				case UITouchPhaseEnded:
-				case UITouchPhaseCancelled:
-					foundTouchIndex = idx - 1;
-					touchIndicator = touches[foundTouchIndex];
-					remainingTouch--;
-
-					//found touch, add to remove queue & remove from touches array
-					if (touchIndicator != NULL) {
-						idx--;
-						[pendingRemove addObject:@{
-							@"animated": @NO,
-							@"view": touchIndicator
-						}];
-						[touches removeObjectAtIndex:foundTouchIndex];
-						[UIView animateWithDuration:0.2 animations:^() {
-							for (int i=0; i<pendingRemove.count; i++) {
-								NSNumber *animated = pendingRemove[i][@"animated"];
-								if ([animated boolValue] == NO) {
-									UIView *touchIndicator = pendingRemove[i][@"view"];
-									pendingRemove[i] = @{
-										@"animated": @YES,
-										@"view": touchIndicator
-									};
-									touchIndicator.alpha = 0.0;
-									fadeStartCount++;
-								}
-							}
-						} completion:^(BOOL finished) {
-							fadeEndCount++;
-							if (fadeStartCount <= fadeEndCount) {
-								@try {
-									for (int i=0; i<pendingRemove.count; i++) {
-										UIView *touchIndicator = pendingRemove[i][@"view"];
-										[touchIndicator removeFromSuperview];
-										[touchIndicator release];
-									}
-									[pendingRemove removeObjectsInRange:NSMakeRange(0, pendingRemove.count)];
-									fadeStartCount = 0;
-									fadeEndCount = 0;
-								} @catch(NSException *e) {
-								}
-							}
-						}];
+				case UITouchPhaseStationary: {
+					foundTouchIndex = findTouch(point.x, point.y);
+					if (foundTouchIndex != -1) {
+						[touches replaceObjectAtIndex:foundTouchIndex withObject:@{@"point":[NSValue valueWithCGPoint:point], @"indicator": touches[foundTouchIndex][@"indicator"], @"cycle": [NSNumber numberWithUnsignedLongLong:cycle]}];
+					} else {
+						addIndicator(point, keyWindow);
 					}
-
-					//clear point not removed
-					if (remainingTouch == 0 && touches.count > 0) {
-						NSLog(@"[ReplayKit Everywhere] cleaning remaining touch");
-						for (int i=0; i<touches.count; i++) {
-							touchIndicator = touches[i];
+					break;
+				}
+			}
+		}
+		for (int i = touches.count - 1; i >= 0; i--) {
+			if ([touches[i][@"cycle"] unsignedLongLongValue] == cycle) continue;
+			UIView* touchIndicator = touches[i][@"indicator"];
+			//[touchIndicator removeFromSuperview];
+			//[touchIndicator release];
+			[pendingRemove addObject:@{
+				@"animated": @NO,
+				@"view": touchIndicator
+			}];
+			[touches removeObjectAtIndex:i];
+			[UIView animateWithDuration:0.2 animations:^() {
+				for (int i=0; i<pendingRemove.count; i++) {
+					NSNumber *animated = pendingRemove[i][@"animated"];
+					if ([animated boolValue] == NO) {
+						UIView *touchIndicator = pendingRemove[i][@"view"];
+						pendingRemove[i] = @{
+							@"animated": @YES,
+							@"view": touchIndicator
+						};
+						touchIndicator.alpha = 0.0;
+						fadeStartCount++;
+					}
+				}
+			} completion:^(BOOL finished) {
+				fadeEndCount++;
+				if (fadeStartCount <= fadeEndCount) {
+					@try {
+						for (int i=0; i<pendingRemove.count; i++) {
+							UIView *touchIndicator = pendingRemove[i][@"view"];
 							[touchIndicator removeFromSuperview];
 							[touchIndicator release];
 						}
-						[touches removeObjectsInRange:NSMakeRange(0, touches.count)];
+						[pendingRemove removeObjectsInRange:NSMakeRange(0, pendingRemove.count)];
+						fadeStartCount = 0;
+						fadeEndCount = 0;
+					} @catch(NSException *e) {
 					}
-					break;
-			}
+				}
+			}];
 		}
+		cycle++;
 	}
 }
 
