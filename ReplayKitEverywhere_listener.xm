@@ -67,7 +67,6 @@
 static id observer;
 static id RKEListenerInstance = NULL;
 static BOOL inApp = false;
-static NSDictionary *setting = NULL;
 static NSMutableArray* touches = NULL;
 static NSMutableArray* pendingRemove = NULL;
 static NSBundle *tweakBundle = NULL;
@@ -76,6 +75,8 @@ static RPPreviewViewController *previewControllerShare = NULL;
 static int fadeStartCount = 0;
 static int fadeEndCount = 0;
 static RKEBulletinProvider *bulletinProvider = NULL;
+static bool indicator_on = false;
+static bool indicator_always_on = false;
 
 @implementation RKEBulletinRequest
 	-(id)init {
@@ -285,15 +286,27 @@ static void observeReplaydExit(bool killProc) {
 	results = NULL;
 }
 
+NSString* RKEGetSettingValue(NSString *key, NSString *defaultValue) {
+	NSDictionary *setting = [NSDictionary dictionaryWithContentsOfFile: @"/var/mobile/Library/Preferences/com.estertion.replaykiteverywhere.plist"];
+	if (setting == NULL) return defaultValue;
+	NSObject *value = [setting objectForKey:key];
+	if (value == NULL) return defaultValue;
+
+	NSString *valueStr;
+	if ([value isKindOfClass:[NSString class]]) {
+		valueStr = (NSString *)value;
+	} else if ([value isKindOfClass:[NSNumber class]]) {
+		valueStr = [(NSNumber *)value stringValue];
+	} else {
+		valueStr = defaultValue;
+	}
+	return valueStr;
+}
+
 UIWindow* customWindowMethod(id self, SEL _cmd) {
 	return [UIApplication sharedApplication].keyWindow;
 }
 
-void reloadSetting() {
-	[setting release];
-	setting = [[NSMutableDictionary alloc] initWithContentsOfFile: @"/var/mobile/Library/Preferences/com.estertion.replaykiteverywhere.plist"];
-	NSLog(@"[ReplayKit Everywhere] Reloaded settings");
-}
 %ctor
 {
 	@autoreleasepool
@@ -369,7 +382,8 @@ void reloadSetting() {
 								];
 								[[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:[NSOperationQueue mainQueue]
 									usingBlock:^(NSNotification *notification) {
-										reloadSetting();
+										indicator_on = [RKEGetSettingValue(@"indicator", @"1") isEqualToString:@"1"];
+										indicator_always_on = [RKEGetSettingValue(@"indicator_always", @"0") isEqualToString:@"1"];
 									}
 								];
 								inApp = true;
@@ -420,22 +434,6 @@ LMConnection connection = {
 	MACH_PORT_NULL,
 	"com.estertion.replaykiteverywhere.lmserver"
 };
-
-NSString* RKEGetSettingValue(NSString *key, NSString *defaultValue) {
-	if (setting == NULL) return defaultValue;
-	NSObject *value = [setting objectForKey:key];
-	if (value == NULL) return defaultValue;
-
-	NSString *valueStr;
-	if ([value isKindOfClass:[NSString class]]) {
-		valueStr = (NSString *)value;
-	} else if ([value isKindOfClass:[NSNumber class]]) {
-		valueStr = [(NSNumber *)value stringValue];
-	} else {
-		valueStr = defaultValue;
-	}
-	return valueStr;
-}
 
 @implementation ReplayKitEverywhere
 
@@ -613,8 +611,8 @@ void addIndicator(CGPoint point, UIView* keyWindow) {
 -(void) sendEvent:(UIEvent*)event {
 	%orig;
 	if (!inApp) return;
-	if ([RKEGetSettingValue(@"indicator", @"1") isEqualToString:@"0"]) return;
-	if ([RKEGetSettingValue(@"indicator_always", @"0") isEqualToString:@"0"] && !RPScreenRecorder.sharedRecorder.recording) return;
+	if (!indicator_on) return;
+	if (!indicator_always_on && !RPScreenRecorder.sharedRecorder.recording) return;
 	if ([event type] == UIEventTypeTouches) {
 		for (UITouch* touch in event.allTouches) {
 			UIView *keyWindow = [UIApplication sharedApplication].keyWindow;
@@ -691,6 +689,30 @@ void addIndicator(CGPoint point, UIView* keyWindow) {
 		}
 		cycle++;
 	}
+}
+
+%end
+
+static bool supportHEVC = [[AVAssetExportSession allExportPresets] containsObject:@"AVAssetExportPresetHEVCHighestQuality"];
+static bool changeNextAssetExport = false;
+
+%hook RPAudioMixUtility
+
++(void)mixAudioForMovie:(id)movie withCompletionHandler:(id)handler {
+  changeNextAssetExport = true;
+  return %orig;
+}
+
+%end
+
+%hook AVAssetExportSession
+
+- (instancetype)initWithAsset:(AVAsset *)asset presetName:(NSString *)presetName {
+  if (changeNextAssetExport && supportHEVC && [RKEGetSettingValue(@"useHEVC", @"0") isEqualToString:@"1"]) {
+    presetName = @"AVAssetExportPresetHEVCHighestQuality";
+    changeNextAssetExport = false;
+  }
+  return %orig(asset, presetName);
 }
 
 %end
