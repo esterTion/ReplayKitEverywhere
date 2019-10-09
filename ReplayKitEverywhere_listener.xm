@@ -77,6 +77,7 @@ static int fadeEndCount = 0;
 static RKEBulletinProvider *bulletinProvider = NULL;
 static bool indicator_on = false;
 static bool indicator_always_on = false;
+static UINotificationFeedbackGenerator *hapticGen = NULL;
 
 @implementation RKEBulletinRequest
   -(id)init {
@@ -400,6 +401,10 @@ UIWindow* customWindowMethod(id self, SEL _cmd) {
 
                 touches = [[NSMutableArray alloc] init];
                 pendingRemove = [[NSMutableArray alloc] init];
+
+                if (@available(iOS 10.0, *)) {
+                  hapticGen = [[UINotificationFeedbackGenerator alloc] init];
+                }
               }
             }
 
@@ -437,7 +442,15 @@ LMConnection connection = {
 
 @implementation ReplayKitEverywhere
 
++(void)playSuccessHaptic {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [hapticGen notificationOccurred:UINotificationFeedbackTypeSuccess];
+  });
+}
 +(void)warnWithError:(NSError *)error {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [hapticGen notificationOccurred:UINotificationFeedbackTypeError];
+  });
   NSString *errorMessage;
   switch([error code]) {
     case RPRecordingErrorUserDeclined:
@@ -501,6 +514,7 @@ LMConnection connection = {
         [ReplayKitEverywhere warnWithError:error];
         return;
       } else {
+        [ReplayKitEverywhere playSuccessHaptic];
         notify_post("com.estertion.replaykiteverywhere.record_started");
         [ReplayKitEverywhere showBulletin:@"Record started"];
       }
@@ -512,6 +526,7 @@ LMConnection connection = {
         [ReplayKitEverywhere warnWithError:error];
         return;
       } else {
+        [ReplayKitEverywhere playSuccessHaptic];
         notify_post("com.estertion.replaykiteverywhere.record_started");
         [ReplayKitEverywhere showBulletin:@"Record started"];
       }
@@ -537,6 +552,8 @@ LMConnection connection = {
         [ReplayKitEverywhere warnWithError:error];
         return;
       }else if(previewViewController != nil){
+
+        [hapticGen notificationOccurred:UINotificationFeedbackTypeSuccess];
         
         previewViewController.previewControllerDelegate = self;
         previewControllerShare = previewViewController;
@@ -544,6 +561,19 @@ LMConnection connection = {
         UIViewController *rootController = [UIApplication sharedApplication].keyWindow.rootViewController;
         [rootController presentViewController:previewViewController animated:YES completion:nil];
         
+        dispatch_time_t delay = dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC);
+        dispatch_after(delay, dispatch_get_main_queue(), ^(void) {
+          if (previewControllerShare && !previewControllerShare.presentingViewController) {
+            UIViewController *rootController = [UIApplication sharedApplication].keyWindow.rootViewController;
+            [rootController presentViewController:previewControllerShare animated:YES completion:nil];
+          }
+        });
+        for (int i = touches.count - 1; i >= 0; i--) {
+          UIView *touchIndicator = touches[i][@"indicator"];
+          [touchIndicator removeFromSuperview];
+          [touchIndicator release];
+          [touches removeObjectAtIndex:i];
+        }
       }
       
     }];
