@@ -81,7 +81,7 @@ static UINotificationFeedbackGenerator *hapticGen = NULL;
 
 @implementation RKEBulletinRequest
   -(id)init {
-    [super init];
+    self = [super init];
     self.sectionID = @"com.estertion.replaykiteverywhere";
     self.title = @"ReplayKit Everywhere";
     self.section = [bulletinProvider sectionIdentifier];
@@ -109,12 +109,12 @@ static UINotificationFeedbackGenerator *hapticGen = NULL;
   -(id)sectionIdentifier { return @"ReplayKit Everywhere"; }
   -(id)sortDescriptors { return [NSArray arrayWithObjects:[NSSortDescriptor sortDescriptorWithKey:@"date" ascending:false], nil]; }
   -(id) init {
-    [super init];
+    self = [super init];
     id queue = dispatch_queue_create("com.estertion.replaykiteverywhere.bulletinboard", 0);
     self->_dataProviderQueue = queue;
-    BBDataProviderConnection *connection = [[[BBDataProviderConnection alloc] initWithServiceName: @"com.estertion.replaykiteverywhere.bulletinboard" onQueue:queue] retain];
+    BBDataProviderConnection *connection = [[BBDataProviderConnection alloc] initWithServiceName: @"com.estertion.replaykiteverywhere.bulletinboard" onQueue:queue];
     self->_dataProviderConnection = connection;
-    BBDataProviderProxy *proxy = [[connection addDataProvider:self] retain];
+    BBDataProviderProxy *proxy = [connection addDataProvider:self];
     self->_dataProviderProxy = proxy;
     [proxy invalidateBulletins];
     return self;
@@ -138,7 +138,6 @@ void showBulletin(NSString *message) {
   } else if (bulletinProvider) {
     [bulletinProvider addBulletin:bulletin];
   }
-  [bulletin release];
 }
 
 //http://iphonedevwiki.net/index.php/LightMessaging
@@ -161,7 +160,7 @@ void showBulletinListener(CFMachPortRef port, LMMessage *message, CFIndex size, 
 
 @try{
   NSError* error;
-  NSDictionary *msg = [NSJSONSerialization JSONObjectWithData:(NSData*)cfdata options:kNilOptions error:&error];
+  NSDictionary *msg = [NSJSONSerialization JSONObjectWithData:(__bridge NSData*)cfdata options:kNilOptions error:&error];
   if ([msg[@"cmd"] isEqualToString:@"bulletin"]) {
     showBulletin([tweakBundle localizedStringForKey:msg[@"value"] value:@"" table:nil]);
   } else if ([msg[@"cmd"] isEqualToString:@"save_record"]) {
@@ -235,7 +234,7 @@ static void replaydDidExited(
       showBulletin([tweakBundle localizedStringForKey:@"Warning: recorder just crashed, current recording might be corrupted and it might not work until app restarted" value:@"" table:nil]);
       recording = false;
       [LASharedActivator unregisterListenerWithName:@"com.estertion.replaykiteverywhere"];
-      [RKEListenerInstance release];
+      RKEListenerInstance = nil;
       RKEListenerInstance = [RKEverywhereListener new];
       [LASharedActivator registerListener:RKEListenerInstance forName:@"com.estertion.replaykiteverywhere"];
     }
@@ -329,7 +328,7 @@ UIWindow* customWindowMethod(id self, SEL _cmd) {
               dispatch_get_main_queue(),^(int token) {
                 recording = true;
                 [LASharedActivator unregisterListenerWithName:@"com.estertion.replaykiteverywhere"];
-                [RKEListenerInstance release];
+                RKEListenerInstance = nil;
                 RKEListenerInstance = [RKEverywhereListener new];
                 [LASharedActivator registerListener:RKEListenerInstance forName:@"com.estertion.replaykiteverywhere"];
               }
@@ -339,7 +338,7 @@ UIWindow* customWindowMethod(id self, SEL _cmd) {
               dispatch_get_main_queue(),^(int token) {
                 recording = false;
                 [LASharedActivator unregisterListenerWithName:@"com.estertion.replaykiteverywhere"];
-                [RKEListenerInstance release];
+                RKEListenerInstance = nil;
                 RKEListenerInstance = [RKEverywhereListener new];
                 [LASharedActivator registerListener:RKEListenerInstance forName:@"com.estertion.replaykiteverywhere"];
               }
@@ -490,7 +489,7 @@ LMConnection connection = {
   NSError *error;
   NSData *msg = [NSJSONSerialization dataWithJSONObject:dict options:kNilOptions error:&error];
   SInt32 messageId = 0x1111; // this is arbitrary i think
-  LMConnectionSendOneWayData(&connection, messageId, (CFDataRef)msg);
+  LMConnectionSendOneWayData(&connection, messageId, (__bridge CFDataRef)msg);
 }
 
 +(void)startRec{
@@ -571,7 +570,6 @@ LMConnection connection = {
         for (int i = touches.count - 1; i >= 0; i--) {
           UIView *touchIndicator = touches[i][@"indicator"];
           [touchIndicator removeFromSuperview];
-          [touchIndicator release];
           [touches removeObjectAtIndex:i];
         }
       }
@@ -707,7 +705,6 @@ void addIndicator(CGPoint point, UIView* keyWindow) {
             for (int i=0; i<pendingRemove.count; i++) {
               UIView *touchIndicator = pendingRemove[i][@"view"];
               [touchIndicator removeFromSuperview];
-              [touchIndicator release];
             }
             [pendingRemove removeObjectsInRange:NSMakeRange(0, pendingRemove.count)];
             fadeStartCount = 0;
