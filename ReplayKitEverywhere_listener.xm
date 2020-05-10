@@ -78,6 +78,7 @@ static RKEBulletinProvider *bulletinProvider = NULL;
 static bool indicator_on = false;
 static bool indicator_always_on = false;
 static UINotificationFeedbackGenerator *hapticGen = NULL;
+static UIWindow* previewWindow = NULL;
 
 @implementation RKEBulletinRequest
   -(id)init {
@@ -349,7 +350,7 @@ UIWindow* customWindowMethod(id self, SEL _cmd) {
                 observeReplaydExit(false);
               }
             );
-            observeReplaydExit(true);
+            observeReplaydExit(false);
 
             if (!objc_getClass("SBBulletinBannerController")) {
               bulletinProvider = [[RKEBulletinProvider alloc] init];
@@ -496,6 +497,7 @@ LMConnection connection = {
 
   if (previewControllerShare != NULL) {
     [previewControllerShare dismissViewControllerAnimated:NO completion:nil];
+    previewWindow.hidden = YES;
     previewControllerShare = NULL;
   }
   
@@ -557,16 +559,14 @@ LMConnection connection = {
         previewViewController.previewControllerDelegate = self;
         previewControllerShare = previewViewController;
         
-        UIViewController *rootController = [UIApplication sharedApplication].keyWindow.rootViewController;
-        [rootController presentViewController:previewViewController animated:YES completion:nil];
+        if (!previewWindow) {
+          previewWindow = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+          previewWindow.windowLevel = UIWindowLevelStatusBar - 1;
+          previewWindow.rootViewController = [[UIViewController alloc] init];
+        }
+        previewWindow.hidden = NO;
+        [previewWindow.rootViewController presentViewController:previewViewController animated:YES completion:nil];
         
-        dispatch_time_t delay = dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC);
-        dispatch_after(delay, dispatch_get_main_queue(), ^(void) {
-          if (previewControllerShare && !previewControllerShare.presentingViewController) {
-            UIViewController *rootController = [UIApplication sharedApplication].keyWindow.rootViewController;
-            [rootController presentViewController:previewControllerShare animated:YES completion:nil];
-          }
-        });
         for (int i = touches.count - 1; i >= 0; i--) {
           UIView *touchIndicator = touches[i][@"indicator"];
           [touchIndicator removeFromSuperview];
@@ -603,7 +603,9 @@ LMConnection connection = {
 +(void)previewControllerDidFinish:(RPPreviewViewController *)previewController {
   dispatch_async(dispatch_get_main_queue(), ^{
     if (previewControllerShare != NULL) {
-      [previewControllerShare dismissViewControllerAnimated:YES completion:nil];
+      [previewControllerShare dismissViewControllerAnimated:YES completion:^() {
+        previewWindow.hidden = YES;
+      }];
       previewControllerShare = NULL;
     }
   });
