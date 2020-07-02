@@ -1,7 +1,7 @@
 Package: com.estertion.replaykiteverywhere
 Name: ReplayKit Everywhere
-Depends: mobilesubstrate, libactivator, firmware (>= 9.0), firmware (<< 13.0), cy+cpu.arm64, com.rpetrich.rocketbootstrap (>= 1.0.2), preferenceloader
-Version: 1.7.6
+Depends: mobilesubstrate, libactivator, firmware (>= 9.0), firmware (<< 14.0), cy+cpu.arm64, com.rpetrich.rocketbootstrap (>= 1.0.2), preferenceloader
+Version: 1.7.7
 Architecture: iphoneos-arm
 Description: Record app screen, everywhere, with the convenience of ReplayKit
 Maintainer: esterTion <esterTionCN@gmail.com>

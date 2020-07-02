@@ -405,6 +405,7 @@ UIWindow* customWindowMethod(id self, SEL _cmd) {
                 if (@available(iOS 10.0, *)) {
                   hapticGen = [[UINotificationFeedbackGenerator alloc] init];
                 }
+                if (RPScreenRecorder.sharedRecorder.available) {}
               }
             }
 
@@ -560,11 +561,16 @@ LMConnection connection = {
         previewControllerShare = previewViewController;
         
         if (!previewWindow) {
-          previewWindow = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+          if (@available(iOS 13.0, *)) {
+            previewWindow = [[UIWindow alloc] initWithWindowScene:[UIApplication sharedApplication].keyWindow.windowScene];
+          } else {
+            previewWindow = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+          }
           previewWindow.windowLevel = UIWindowLevelStatusBar - 1;
-          previewWindow.rootViewController = [[UIViewController alloc] init];
+          previewWindow.rootViewController = [[UIViewController alloc] initWithNibName:nil bundle:nil];
         }
         previewWindow.hidden = NO;
+        previewViewController.modalPresentationStyle = UIModalPresentationFullScreen;
         [previewWindow.rootViewController presentViewController:previewViewController animated:YES completion:nil];
         
         for (int i = touches.count - 1; i >= 0; i--) {
