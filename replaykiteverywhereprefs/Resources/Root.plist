@@ -134,7 +134,7 @@
 		},
 		{
 			cell = "PSGroupCell";
-			footerText = "© 2018 esterTion";
+			footerText = "© 2020 esterTion";
 		}
 	);
 }

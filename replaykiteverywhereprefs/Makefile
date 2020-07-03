@@ -1,6 +1,6 @@
 include $(THEOS)/makefiles/common.mk
 
-ARCHS = arm64
+ARCHS = arm64 arm64e
 TARGET = iphone::9.3:9.0
 SYSROOT = $(THEOS)/sdks/iPhoneOS9.3.sd
 BUNDLE_NAME = ReplayKitEverywherePrefs
