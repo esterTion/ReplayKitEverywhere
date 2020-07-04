@@ -60,6 +60,13 @@
 			key = "fix_foreground";
 		},
 		{
+			cell = "PSSwitchCell";
+			label = "Don't stop recording when leaving";
+			defaults = "com.estertion.replaykiteverywhere";
+			default = "0";
+			key = "no_autostop";
+		},
+		{
 			cell = "PSGroupCell";
 			label = "ReplayKit Settings";
 			footerText = QUALITY_FOOT;

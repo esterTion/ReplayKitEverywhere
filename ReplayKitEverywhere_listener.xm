@@ -79,6 +79,7 @@ static bool indicator_on = false;
 static bool indicator_always_on = false;
 static UINotificationFeedbackGenerator *hapticGen = NULL;
 static UIWindow* previewWindow = NULL;
+static bool no_autostop = false;
 
 @implementation RKEBulletinRequest
   -(id)init {
@@ -376,7 +377,7 @@ UIWindow* customWindowMethod(id self, SEL _cmd) {
                 NSLog(@"[ReplayKit Everywhere] Started record listener for app %@", bundleId);
                 [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidEnterBackgroundNotification object:nil queue:[NSOperationQueue mainQueue]
                   usingBlock:^(NSNotification *notification) {
-                    if (RPScreenRecorder.sharedRecorder.recording){
+                    if (RPScreenRecorder.sharedRecorder.recording && !no_autostop){
                       [ReplayKitEverywhere stopRec];
                     }
                   }
@@ -385,6 +386,7 @@ UIWindow* customWindowMethod(id self, SEL _cmd) {
                   usingBlock:^(NSNotification *notification) {
                     indicator_on = [RKEGetSettingValue(@"indicator", @"1") isEqualToString:@"1"];
                     indicator_always_on = [RKEGetSettingValue(@"indicator_always", @"0") isEqualToString:@"1"];
+                    no_autostop = [RKEGetSettingValue(@"no_autostop", @"0") isEqualToString:@"1"];
                   }
                 ];
                 inApp = true;

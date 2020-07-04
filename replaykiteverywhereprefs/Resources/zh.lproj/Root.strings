@@ -27,4 +27,5 @@
   "Always visible" = "始终显示";
   "Fix for \"Failed to start record\"" = "修复持续的“开始录制失败”";
   "Encode using HEVC" = "使用 HEVC 编码";
+  "Don't stop recording when leaving" = "退出app时不停止录制";
 }
