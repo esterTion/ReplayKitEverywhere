@@ -501,6 +501,8 @@ LMConnection connection = {
   if (previewControllerShare != NULL) {
     [previewControllerShare dismissViewControllerAnimated:NO completion:nil];
     previewWindow.hidden = YES;
+    [previewWindow removeFromSuperview];
+    previewWindow = nil;
     previewControllerShare = NULL;
   }
   
@@ -519,6 +521,7 @@ LMConnection connection = {
         return;
       } else {
         [ReplayKitEverywhere playSuccessHaptic];
+        recording = true;
         notify_post("com.estertion.replaykiteverywhere.record_started");
         [ReplayKitEverywhere showBulletin:@"Record started"];
       }
@@ -531,6 +534,7 @@ LMConnection connection = {
         return;
       } else {
         [ReplayKitEverywhere playSuccessHaptic];
+        recording = true;
         notify_post("com.estertion.replaykiteverywhere.record_started");
         [ReplayKitEverywhere showBulletin:@"Record started"];
       }
@@ -545,6 +549,7 @@ LMConnection connection = {
 
 +(void)stopRec{
   notify_post("com.estertion.replaykiteverywhere.record_stopped");
+  recording = false;
   if ([RKEGetSettingValue(@"autosave", @"0") isEqualToString:@"1"]) {
     [(RKE_RPScreenRecorder*)[RPScreenRecorder sharedRecorder] stopRecordingWithVideoURLHandler:^(NSURL* url) {
       NSString *path = [[url standardizedURL] path];
@@ -574,17 +579,15 @@ LMConnection connection = {
         previewWindow.hidden = NO;
         previewViewController.modalPresentationStyle = UIModalPresentationFullScreen;
         [previewWindow.rootViewController presentViewController:previewViewController animated:YES completion:nil];
-        
-        for (int i = touches.count - 1; i >= 0; i--) {
-          UIView *touchIndicator = touches[i][@"indicator"];
-          [touchIndicator removeFromSuperview];
-          [touches removeObjectAtIndex:i];
-        }
       }
       
     }];
   }
-  
+  for (int i = touches.count - 1; i >= 0; i--) {
+    UIView *touchIndicator = touches[i][@"indicator"];
+    [touchIndicator removeFromSuperview];
+    [touches removeObjectAtIndex:i];
+  }
 }
 
 +(void)startOrStopRec{
@@ -613,6 +616,8 @@ LMConnection connection = {
     if (previewControllerShare != NULL) {
       [previewControllerShare dismissViewControllerAnimated:YES completion:^() {
         previewWindow.hidden = YES;
+        [previewWindow removeFromSuperview];
+        previewWindow = nil;
       }];
       previewControllerShare = NULL;
     }
@@ -650,7 +655,7 @@ void addIndicator(CGPoint point, UIView* keyWindow) {
   %orig;
   if (!inApp) return;
   if (!indicator_on) return;
-  if (!indicator_always_on && !RPScreenRecorder.sharedRecorder.recording) return;
+  if (!indicator_always_on && !recording) return;
   if ([event type] == UIEventTypeTouches) {
     for (UITouch* touch in event.allTouches) {
       UIView *keyWindow = [UIApplication sharedApplication].keyWindow;

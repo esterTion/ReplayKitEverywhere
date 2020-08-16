@@ -75,7 +75,6 @@ static bool supportHEVC = [[AVAssetExportSession allExportPresets] containsObjec
       modify[AVEncoderBitRateKey] = audioBitrate[quality];
     }
     outputSettings = [NSDictionary dictionaryWithDictionary:modify];
-    [modify release];
   }
 
   if (supportHEVC && [mediaType isEqualToString:@"vide"] && [RKEGetSettingValue(@"useHEVC", @"0") isEqualToString:@"1"]) {
@@ -86,7 +85,6 @@ static bool supportHEVC = [[AVAssetExportSession allExportPresets] containsObjec
     compressModify[AVVideoProfileLevelKey] = @"HEVC_Main_AutoLevel";
     modify[@"AVVideoCompressionPropertiesKey"] = compressModify;
     outputSettings = [NSDictionary dictionaryWithDictionary:modify];
-    [modify release];
   }
 
   return %orig(mediaType, outputSettings);
@@ -122,3 +120,10 @@ static bool supportHEVC = [[AVAssetExportSession allExportPresets] containsObjec
 %ctor {
   notify_post("com.estertion.replaykiteverywhere.replayd_started");
 }
+
+%hook FigScreenCaptureController
++(id)screenCaptureControllerWithSize:(CGRect)rect minIntervalBetweenFrames:(CMTime)interval {
+  interval.timescale = [UIScreen mainScreen].maximumFramesPerSecond;
+  return %orig;
+}
+%end
