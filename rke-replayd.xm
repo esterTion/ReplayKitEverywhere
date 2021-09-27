@@ -117,6 +117,18 @@ static bool supportHEVC = [[AVAssetExportSession allExportPresets] containsObjec
 }
 %end
 
+// ios 14
+%hook RPRecordSession
+-(bool)shouldSupressAlert {
+  NSString *skipWarn = RKEGetSettingValue(@"skipWarn", @"0");
+  if ([skipWarn isEqualToString:@"0"]) {
+    return %orig;
+  } else {
+    return true;
+  }
+}
+%end
+
 %ctor {
   notify_post("com.estertion.replaykiteverywhere.replayd_started");
 }
